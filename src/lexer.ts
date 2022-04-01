@@ -1,11 +1,15 @@
 
-export type TokenType = "identifier" | "return" | "oparen" | "cparen" | "obrace" | "cbrace" | "obracket" | "cbracket" | "float" | "int" | "semicolon" | "string" | "comment";
+export type TokenType = "identifier" | "return" | "oparen" | "cparen" | "obrace" | "cbrace" | "obracket" | "cbracket" | "float" | "int" | "semicolon" | "string" | "comment" | "eof";
 
 export interface Token {
-    kind: string
+    kind: TokenType
     value: string;
     position: number;
 };
+
+export function ToString(token: Token): string {
+    return `${token.kind} [${token.value}@${token.position}]`;
+}
 
 function readToken(input: string, position: number): Token | undefined {
     const patterns: [TokenType, RegExp][] = [
@@ -42,4 +46,18 @@ export function lex(input: string): Token[] {
         else { pos += 1 }
     }
     return tokens;
+}
+
+export interface Scanner {
+    next(): Token;
+}
+
+export function getScanner(tokens: Token[]): Scanner {
+    let pos = 0;
+    return {
+        next: () => {
+            if (pos >= tokens.length) return { kind: "eof", value: "", position: pos };
+            else return tokens[pos++];
+        }
+    }
 }
