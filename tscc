@@ -1,2 +1,2 @@
 #!/usr/bin/bash
-node build/index.js
+node build/index.js $1
