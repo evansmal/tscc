@@ -4,32 +4,6 @@ import { argv } from 'process';
 
 import { lex, getScanner, Scanner, Token, ToString } from "./lexer.js";
 
-
-interface Variable {
-    kind: "Variable"
-}
-
-interface Constant {
-    kind: "Constant"
-}
-
-interface VariableAssignment {
-    kind: "VariableAssignment"
-}
-
-interface Return {
-    kind: "Return"
-}
-
-interface FunctionBody {
-    kind: "FunctionBody"
-    body: Statement[];
-}
-
-interface BinaryOperator {
-    kind: "BinaryOperator"
-}
-
 interface Program {
     kind: "Program"
     functions: FunctionDeclaration[];
@@ -44,63 +18,70 @@ function Identifier(name: string): Identifier {
     return { kind: "Identifier", value: name };
 }
 
-interface Declaration {
-    kind: "Declaration"
-}
-
-type Block = [Statement | Declaration][];
-
 interface FunctionDeclaration {
     kind: "FunctionDeclaration"
     name: Identifier;
     body: Block;
 }
 
-interface Statement {
-    kind: "Statement"
+interface Constant {
+    kind: "Constant";
+    value: number;
 }
 
-function parseFunctionBody(scanner: Scanner): Block {
-    let token = scanner.next();
-    if (token.kind !== "obrace") throw new Error("Could not parse function body");
+interface Return {
+    kind: "Return";
+    expr: Expression;
+}
 
-    const body: Token[] = [];
-    while (true) {
-        token = scanner.next();
-        if (token.kind === "cbrace") break;
-        body.push(token);
+type Expression = Constant;
+
+type Statement = Return;
+
+type Block = Statement[];
+
+function parseStatement(scanner: Scanner): Statement {
+    const token = scanner.next();
+    if (token.kind === "return") {
+        const constant = scanner.next();
+        return {
+            kind: "Return",
+            expr: {
+                kind: "Constant",
+                value: parseInt(constant.value)
+            }
+        }
+
+    } else {
+        throw new Error("Could not parse statement");
     }
-
-    // TODO: parse function body
-    console.log("Body tokens: ", body);
-
-    return [];
 }
 
-function parseFunction(scanner: Scanner): FunctionDeclaration {
-
-    const return_indentifier = scanner.next();
-    if (return_indentifier.kind !== "identifier") throw new Error("Could not parse function return type identifier: " + ToString(return_indentifier));
-
-    const name = scanner.next();
+function parseFunctionDeclaration(scanner: Scanner): FunctionDeclaration {
+    const return_identifier = scanner.next();
+    if (return_identifier.kind !== "identifier") {
+        throw new Error("Could not parse function return type identifier: " + ToString(return_identifier));
+    }
+    const function_name = scanner.next();
 
     scanner.next(); // (
-    // TODO: get function interface
     scanner.next(); // )
 
-    const body = parseFunctionBody(scanner)
+    scanner.next(); // {
+    const body = parseStatement(scanner)
+    scanner.next(); // }
 
     return {
         kind: "FunctionDeclaration",
-        name: Identifier(name.value),
-        body
+        name: Identifier(function_name.value),
+        body: [body]
     }
 }
 
 function parse(scanner: Scanner): Program {
     return {
         kind: "Program",
-        functions: [parseFunction(scanner)]
+        functions: [parseFunctionDeclaration(scanner)]
     }
 }
 
