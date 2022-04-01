@@ -92,7 +92,7 @@ function emitOperand(operand: Operand): string {
 }
 
 function emitInstruction(instruction: Instruction): string {
-    if (instruction.kind === "Mov") return `mov1 ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
+    if (instruction.kind === "Mov") return `movl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
     else if (instruction.kind === "Ret") return `ret`;
     else throw new Error(`Could emit instruction: ${instruction}`);
 }
