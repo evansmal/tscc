@@ -1,0 +1,23 @@
+{
+    "include": [
+        "src/*.ts"
+    ],
+    "compilerOptions": {
+        "strict": true,
+        "alwaysStrict": true,
+        "allowUnreachableCode": false,
+        "allowUnusedLabels": false,
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
+        "lib": [
+            "esnext"
+        ],
+        "declaration": true,
+        "skipLibCheck": true,
+        "sourceMap": true,
+        "module": "CommonJS",
+        "target": "ESNext",
+        "moduleResolution": "node",
+        "outDir": "build"
+    }
+}

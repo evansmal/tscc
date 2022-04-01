@@ -1,0 +1,15 @@
+{
+    "name": "tcc",
+    "version": "1.0.0",
+    "type": "commonjs",
+    "main": "index.js",
+    "license": "MIT",
+    "scripts": {
+        "build": "tsc",
+        "clean": "rm -rf build"
+    },
+    "dependencies": {
+        "@types/node": "^17.0.23",
+        "typescript": "^4.6.3"
+    }
+}
