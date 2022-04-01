@@ -20,7 +20,7 @@ yarn build
 Run the compiler:
 
 ```sh
-tscc main.c
+./tscc main.c
 ```
 
 
