@@ -2,7 +2,7 @@
 import { readFileSync } from "fs";
 import { argv } from 'process';
 
-import { lex, getScanner, Scanner, Token, ToString } from "./lexer.js";
+import { lex, getScanner, Scanner, Token, TokenType, ToString } from "./lexer.js";
 
 interface Program {
     kind: "Program"
@@ -21,7 +21,7 @@ function Identifier(name: string): Identifier {
 interface FunctionDeclaration {
     kind: "FunctionDeclaration"
     name: Identifier;
-    body: Block;
+    body: Statement;
 }
 
 interface Constant {
@@ -38,23 +38,24 @@ type Expression = Constant;
 
 type Statement = Return;
 
-type Block = Statement[];
+function expect(token_type: TokenType, scanner: Scanner) {
+    const token = scanner.next();
+    if (token.kind !== token_type) throw new Error(`Expected '${token_type}' but got '${token.kind}'`);
+    return token;
+}
 
 function parseStatement(scanner: Scanner): Statement {
-    const token = scanner.next();
-    if (token.kind === "return") {
-        const constant = scanner.next();
-        return {
-            kind: "Return",
-            expr: {
-                kind: "Constant",
-                value: parseInt(constant.value)
-            }
+    expect("return", scanner);
+    const constant = expect("int", scanner);
+    const statement: Return = {
+        kind: "Return",
+        expr: {
+            kind: "Constant",
+            value: parseInt(constant.value)
         }
-
-    } else {
-        throw new Error("Could not parse statement");
     }
+    expect("semicolon", scanner);
+    return statement;
 }
 
 function parseFunctionDeclaration(scanner: Scanner): FunctionDeclaration {
@@ -64,17 +65,17 @@ function parseFunctionDeclaration(scanner: Scanner): FunctionDeclaration {
     }
     const function_name = scanner.next();
 
-    scanner.next(); // (
-    scanner.next(); // )
+    expect("oparen", scanner);
+    expect("cparen", scanner);
 
-    scanner.next(); // {
+    expect("obrace", scanner);
     const body = parseStatement(scanner)
-    scanner.next(); // }
+    expect("cbrace", scanner);
 
     return {
         kind: "FunctionDeclaration",
         name: Identifier(function_name.value),
-        body: [body]
+        body
     }
 }
 
