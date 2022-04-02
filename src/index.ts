@@ -7,23 +7,28 @@ import * as Parser from "./parser.js";
 import * as Generator from "./generator.js";
 
 function assemble(source: string, output_filepath: string) {
-    execSync(`gcc -o ${output_filepath} -xassembler -`, { input: source });
+    execSync(`gcc -o ${output_filepath} -xassembler -`, { stdio: ['pipe', 'pipe', 'ignore'], input: source });
 }
 
 function run(input_filepath: string, output_filepath: string) {
     const input = readFileSync(input_filepath).toString().trim();
-    //console.log("Input: \n", input);
-    //console.log("Lexer: \n", Lexer.lex(input));
-    //console.log("Parser: \n", JSON.stringify(Parser.parse(Lexer.getScanner(Lexer.lex(input))), null, 4));
-    //console.log("Generator: \n", JSON.stringify(Generator.generate(Parser.parse(Lexer.getScanner(Lexer.lex(input)))), null, 4));
-    //console.log("Emitter: \n", Generator.emit(Generator.generate(Parser.parse(Lexer.getScanner(Lexer.lex(input))))));
+    let asm = "";
     try {
-        const output = Generator.emit(Generator.generate(Parser.parse(Lexer.getScanner(Lexer.lex(input)))));
-        assemble(output, output_filepath);
+        asm = Generator.emit(Generator.generate(Parser.parse(Lexer.getScanner(Lexer.lex(input)))));
     } catch (e) {
-        console.log(e);
+        console.error(e);
         process.exit(1);
     }
+
+    console.log(asm);
+
+    try {
+        assemble(asm, output_filepath)
+    } catch (e) {
+        console.error(e);
+        process.exit(2);
+    }
+
     process.exit(0);
 }
 
