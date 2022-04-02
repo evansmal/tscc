@@ -23,7 +23,7 @@ Run the compiler:
 ./tscc main.c
 ```
 
-# Testing
+## Unit Testing
 
 Fow now, this project uses [this](https://github.com/nlsandler/write_a_c_compiler) test suite for basic verification. You can run it using `yarn`:
 
