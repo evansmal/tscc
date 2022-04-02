@@ -25,12 +25,28 @@ export interface Constant {
     value: number;
 }
 
+interface Complement {
+    kind: "Complement";
+}
+
+interface Negate {
+    kind: "Negate";
+}
+
+type UnaryOperator = Complement | Negate;
+
+export interface UnaryExpression {
+    kind: "UnaryExpression";
+    operator: UnaryOperator;
+    expression: Expression;
+}
+
 export interface Return {
     kind: "Return";
     expr: Expression;
 }
 
-export type Expression = Constant;
+export type Expression = Constant | UnaryExpression;
 
 export type Statement = Return;
 
@@ -73,6 +89,10 @@ function parseFunctionDeclaration(scanner: Scanner): Function {
         name: Identifier(function_name.value),
         body
     }
+}
+
+export function toString(program: Program): string {
+    return JSON.stringify(program, null, 4);
 }
 
 export function parse(scanner: Scanner): Program {
