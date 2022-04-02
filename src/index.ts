@@ -7,9 +7,7 @@ import * as Parser from "./parser.js";
 import * as Generator from "./generator.js";
 
 function assemble(source: string, output_filepath: string) {
-    writeFileSync(`${output_filepath}.s`, source);
-    execSync(`gcc -o ${output_filepath} ${output_filepath}.s`);
-    rmSync(`${output_filepath}.s`);
+    execSync(`gcc -o ${output_filepath} -xassembler -`, { input: source });
 }
 
 function run(input_filepath: string, output_filepath: string) {
