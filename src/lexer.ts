@@ -1,5 +1,10 @@
 
-export type TokenType = "identifier" | "return" | "oparen" | "cparen" | "obrace" | "cbrace" | "obracket" | "cbracket" | "float" | "int" | "semicolon" | "string" | "comment" | "eof";
+export type TokenType = "identifier" | "return" | "oparen"
+    | "cparen" | "obrace" | "cbrace"
+    | "obracket" | "cbracket" | "float"
+    | "int" | "semicolon" | "string"
+    | "bitwise_complement" | "decrement" | "negation"
+    | "comment" | "eof";
 
 export interface Token {
     kind: TokenType
@@ -15,6 +20,9 @@ function readToken(input: string, position: number): Token | undefined {
     const patterns: [TokenType, RegExp][] = [
         ["return", /^(return)\w*/],
         ["identifier", /^[a-zA-Z_]\w*/],
+        ["bitwise_complement", /^\~/],
+        ["decrement", /^\--/],
+        ["negation", /^\-/],
         ["oparen", /^\(/],
         ["cparen", /^\)/],
         ["float", /^-?\d+\.\d+/],
