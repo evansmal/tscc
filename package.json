@@ -1,11 +1,12 @@
 {
-    "name": "tcc",
+    "name": "tscc",
     "version": "1.0.0",
     "type": "commonjs",
     "main": "index.js",
     "license": "MIT",
     "scripts": {
         "build": "tsc",
+        "test": "./test/run_tests.sh",
         "clean": "rm -rf build"
     },
     "dependencies": {
