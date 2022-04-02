@@ -23,5 +23,12 @@ Run the compiler:
 ./tscc main.c
 ```
 
+# Testing
 
+Fow now, this project uses [this](https://github.com/nlsandler/write_a_c_compiler) test suite for basic verification. You can run it using `yarn`:
 
+```sh
+yarn build && yarn test <stage>
+```
+
+Where the stage is an integer value from 1 - 10.
