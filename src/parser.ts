@@ -56,15 +56,44 @@ function expect(token_type: TokenType, scanner: Scanner) {
     return token;
 }
 
+function parseExpression(scanner: Scanner): Expression {
+    const token = scanner.next();
+    if (token.kind === "int") {
+        return {
+            kind: "Constant",
+            value: parseInt(token.value)
+        };
+    } else if (token.kind === "bitwise_complement") {
+        return {
+            kind: "UnaryExpression",
+            operator: {
+                kind: "Complement"
+            },
+            expression: parseExpression(scanner)
+        };
+    } else if (token.kind === "negation") {
+        return {
+            kind: "UnaryExpression",
+            operator: {
+                kind: "Negate"
+            },
+            expression: parseExpression(scanner)
+        };
+    } else if (token.kind === "oparen") {
+        const expr = parseExpression(scanner);
+        expect("cparen", scanner);
+        return expr;
+    } else {
+        throw new Error(`Could not parse expression`);
+    }
+}
+
 function parseStatement(scanner: Scanner): Statement {
     expect("return", scanner);
-    const constant = expect("int", scanner);
+    const expression = parseExpression(scanner);
     const statement: Return = {
         kind: "Return",
-        expr: {
-            kind: "Constant",
-            value: parseInt(constant.value)
-        }
+        expr: expression
     }
     expect("semicolon", scanner);
     return statement;
