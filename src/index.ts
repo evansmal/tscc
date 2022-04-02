@@ -11,6 +11,7 @@ function assemble(source: string, output_filepath: string) {
 }
 
 interface Options {
+    show_input: boolean;
     show_lexer: boolean;
     show_ast: boolean;
     show_asm: boolean;
@@ -19,6 +20,7 @@ interface Options {
 
 function run(input_filepath: string, output_filepath: string, opts: Options) {
     const input = readFileSync(input_filepath).toString().trim();
+    if (opts.show_input) console.log(input);
     let output = "";
     try {
         const tokens = Lexer.lex(input);
@@ -50,19 +52,21 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
 
 function main() {
     const input_filepath = argv[2];
-    const output_filepath = input_filepath.replace(/\.[^/.]+$/, "");
-    const opts: Options = {
+    const options: Options = {
+        show_input: false,
         show_lexer: false,
         show_ast: false,
         show_asm: false,
         show_output: false
     };
+    const output_filepath = input_filepath.replace(/\.[^/.]+$/, "");
     for (let i = 3; i < argv.length; i++) {
-        if (argv[i] === "--lex") opts.show_lexer = true;
-        else if (argv[i] === "--ast") opts.show_ast = true;
-        else if (argv[i] === "--asm") opts.show_asm = true;
+        if (argv[i] === "--input") options.show_input = true;
+        else if (argv[i] === "--lex") options.show_lexer = true;
+        else if (argv[i] === "--ast") options.show_ast = true;
+        else if (argv[i] === "--asm") options.show_asm = true;
     }
-    run(input_filepath, output_filepath, opts);
+    run(input_filepath, output_filepath, options);
 }
 
 main();
