@@ -7,7 +7,7 @@
 Start by cloning the repository and installing the dependencies:
 
 ```sh
-git clone https://github.com/evansmal/tscc.git
+git clone --recurse-submodules https://github.com/evansmal/tscc.git
 cd tscc && yarn install
 ```
 
@@ -22,5 +22,6 @@ Run the compiler:
 ```sh
 ./tscc main.c
 ```
+
 
 
