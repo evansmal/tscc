@@ -36,6 +36,7 @@ interface Negate {
 type UnaryOperator = Complement | Negate;
 
 interface UnaryInstruction {
+    kind: "UnaryInstruction";
     operator: UnaryOperator;
     src: Value;
     dst: Value;
@@ -55,8 +56,49 @@ interface Variable {
 
 type Value = ConstantInteger | Variable;
 
+function lowerUnaryOperator(operator: UnaryOperator): UnaryOperator {
+    if (operator.kind === "Negate") return { kind: "Negate" };
+    else if (operator.kind === "Complement") return { kind: "Complement" };
+    else throw new Error("Could not lower unary operator to IR");
+}
+
+function lowerExpression(expression: Parser.Expression, instructions: Instruction[], createValue: () => Value): Value {
+    if (expression.kind === "Constant") {
+        return { kind: "ConstantInteger", value: expression.value };
+    } else if (expression.kind === "UnaryExpression") {
+        const dst = createValue();
+        const unary: UnaryInstruction = {
+            kind: "UnaryInstruction",
+            operator: lowerUnaryOperator(expression.operator),
+            src: lowerExpression(expression.expression, instructions, createValue),
+            dst
+        };
+        instructions.push(unary);
+        return dst;
+    }
+    else {
+        throw new Error("Could not lower AST expression into IR instruction");
+    }
+}
+
 function lowerStatement(statement: Parser.Statement): Instruction[] {
     const instructions: Instruction[] = [];
+    const variables: Variable[] = [];
+    const create_value: () => Value = () => {
+        let id = 0;
+        const variable: Variable = {
+            kind: "Variable",
+            identifier: Identifier(`tmp${id++}`)
+        }
+        variables.push(variable);
+        return variable;
+    };
+    if (statement.kind === "Return") {
+        const variable = lowerExpression(statement.expr, instructions, create_value);
+        instructions.push({ kind: "Return", value: variable });
+    } else {
+        throw new Error("Could not lower AST statement into IR instruction");
+    }
     return instructions;
 }
 
