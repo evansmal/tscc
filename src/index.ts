@@ -1,4 +1,4 @@
-import { rmSync, readFileSync, writeFileSync } from "fs";
+import { readFileSync } from "fs";
 import { argv } from 'process';
 import { execSync } from "child_process";
 
@@ -34,8 +34,10 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
         const ir = IR.lower(ast);
         if (opts.show_ir) console.log(IR.toString(ir));
 
-        const asm = Generator.generate(ast);
-        if (opts.show_asm) console.log(asm);
+        const asm = Generator.generate(ir);
+        if (opts.show_asm) console.log(Generator.toString(asm));
+        Generator.replacePseudoRegister(asm);
+        if (opts.show_asm) console.log(Generator.toString(asm));
 
         output = Generator.emit(asm);
         if (opts.show_output) console.log(output);

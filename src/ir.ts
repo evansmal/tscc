@@ -5,56 +5,56 @@ export interface Program {
     functions: Function[];
 }
 
-interface Identifier {
+export interface Identifier {
     kind: "Identifier";
     value: string;
 }
 
-function Identifier(name: string): Identifier {
+export function Identifier(name: string): Identifier {
     return { kind: "Identifier", value: name };
 }
 
-interface Function {
+export interface Function {
     kind: "Function";
     name: Identifier;
     body: Instruction[];
 }
 
-interface Return {
+export interface Return {
     kind: "Return";
     value: Value;
 }
 
-interface Complement {
+export interface Complement {
     kind: "Complement";
 }
 
-interface Negate {
+export interface Negate {
     kind: "Negate";
 }
 
-type UnaryOperator = Complement | Negate;
+export type UnaryOperator = Complement | Negate;
 
-interface UnaryInstruction {
+export interface UnaryInstruction {
     kind: "UnaryInstruction";
     operator: UnaryOperator;
     src: Value;
     dst: Value;
 }
 
-type Instruction = Return | UnaryInstruction;
+export type Instruction = Return | UnaryInstruction;
 
-interface ConstantInteger {
+export interface ConstantInteger {
     kind: "ConstantInteger";
     value: number;
 }
 
-interface Variable {
+export interface Variable {
     kind: "Variable";
     identifier: Identifier;
 }
 
-type Value = ConstantInteger | Variable;
+export type Value = ConstantInteger | Variable;
 
 function lowerUnaryOperator(operator: UnaryOperator): UnaryOperator {
     if (operator.kind === "Negate") return { kind: "Negate" };
@@ -62,15 +62,15 @@ function lowerUnaryOperator(operator: UnaryOperator): UnaryOperator {
     else throw new Error("Could not lower unary operator to IR");
 }
 
-function lowerExpression(expression: Parser.Expression, instructions: Instruction[], createValue: () => Value): Value {
+function lowerExpression(expression: Parser.Expression, instructions: Instruction[], createVariable: () => Variable): Value {
     if (expression.kind === "Constant") {
         return { kind: "ConstantInteger", value: expression.value };
     } else if (expression.kind === "UnaryExpression") {
-        const dst = createValue();
+        const dst = createVariable();
         const unary: UnaryInstruction = {
             kind: "UnaryInstruction",
             operator: lowerUnaryOperator(expression.operator),
-            src: lowerExpression(expression.expression, instructions, createValue),
+            src: lowerExpression(expression.expression, instructions, createVariable),
             dst
         };
         instructions.push(unary);
@@ -84,7 +84,7 @@ function lowerExpression(expression: Parser.Expression, instructions: Instructio
 function lowerStatement(statement: Parser.Statement): Instruction[] {
     const instructions: Instruction[] = [];
     const variables: Variable[] = [];
-    const create_value: () => Value = () => {
+    const create_value: () => Variable = () => {
         let id = 0;
         const variable: Variable = {
             kind: "Variable",
