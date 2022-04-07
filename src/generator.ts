@@ -184,7 +184,7 @@ export function toString(program: Program): string {
 
 function emitOperand(operand: Operand): string {
     if (operand.kind === "Imm") return `$${operand.value}`;
-    else if (operand.kind === "Register") return `%${operand.identifier}`;
+    else if (operand.kind === "Register") return `%${operand.name}`;
     else throw new Error(`Could emit operand: ${operand}`);
 }
 
