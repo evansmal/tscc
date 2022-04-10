@@ -8,7 +8,8 @@ import * as IR from "./ir.js";
 import * as Generator from "./generator.js";
 
 function assemble(source: string, output_filepath: string) {
-    execSync(`gcc -o ${output_filepath} -xassembler -`, { stdio: ['pipe', 'pipe', 'ignore'], input: source });
+    const buffer = execSync(`gcc -o ${output_filepath} -xassembler -`, { stdio: ['pipe', 'pipe', 'pipe'], input: source });
+    //console.log(buffer.toString());
 }
 
 interface Options {
@@ -36,12 +37,9 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
 
         const asm = Generator.generate(ir);
         if (opts.show_asm) console.log(Generator.toString(asm));
-        Generator.replacePseudoRegister(asm);
-        if (opts.show_asm) console.log(Generator.toString(asm));
 
         output = Generator.emit(asm);
         if (opts.show_output) console.log(output);
-
     } catch (e) {
         console.error(e);
         process.exit(1);
@@ -79,6 +77,7 @@ function main() {
         else if (argv[i] === "--ast") options.show_ast = true;
         else if (argv[i] === "--ir") options.show_ir = true;
         else if (argv[i] === "--asm") options.show_asm = true;
+        else if (argv[i] === "--out") options.show_output = true;
     }
     run(input_filepath, output_filepath, options);
 }

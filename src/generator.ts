@@ -1,4 +1,3 @@
-import * as Parser from "./parser.js";
 import * as IR from "./ir.js";
 
 interface Identifier {
@@ -91,7 +90,11 @@ function UnaryInstruction(operator: UnaryOperator, operand: Operand): UnaryInstr
 
 interface AllocateStack {
     kind: "AllocateStack";
-    locals: number;
+    size: number;
+}
+
+function AllocateStack(size: number): AllocateStack {
+    return { kind: "AllocateStack", size };
 }
 
 type Instruction = Mov | UnaryInstruction | AllocateStack | Ret;
@@ -119,7 +122,6 @@ function lowerValue(value: IR.Value): Operand {
 }
 
 function lowerInstruction(instruction: IR.Instruction): Instruction[] {
-
     if (instruction.kind === "Return") {
         return [
             Mov(lowerValue(instruction.value), Register("ax")),
@@ -135,7 +137,6 @@ function lowerInstruction(instruction: IR.Instruction): Instruction[] {
     else {
         throw new Error(`Could not lower IR.Instruction type '${instruction}'`);
     }
-
 }
 
 function lowerFunction(func: IR.Function): Function {
@@ -146,14 +147,7 @@ function lowerFunction(func: IR.Function): Function {
     };
 }
 
-export function generate(program: IR.Program): Program {
-    return {
-        kind: "Program",
-        function_defintion: lowerFunction(program.functions[0])
-    }
-}
-
-export function replacePseudoRegister(program: Program): number {
+function replacePseudoRegister(program: Program): number {
     let total_offset = 0;
     const offsets = new Map<string, Stack>();
     const putOnStack = (reg: PseudoRegister) => {
@@ -178,27 +172,83 @@ export function replacePseudoRegister(program: Program): number {
     return total_offset;
 }
 
+function insertStackAllocation(func: Function, total_offset: number) {
+    func.instructions = [AllocateStack(total_offset), ...func.instructions];
+}
+
+function fixInvalidMovInstructions(func: Function) {
+    func.instructions = func.instructions.flatMap(inst => {
+        if (inst.kind === "Mov" && inst.src.kind === "Stack" && inst.dst.kind === "Stack") {
+            const first: Mov = Mov(inst.src, Register("r10"));
+            const second: Mov = Mov(Register("r10"), inst.dst);
+            return [first, second];
+        } else { return inst; }
+    });
+}
+
+export function generate(ir: IR.Program): Program {
+    const program: Program = {
+        kind: "Program",
+        function_defintion: lowerFunction(ir.functions[0])
+    }
+    const total_offset = replacePseudoRegister(program);
+    insertStackAllocation(program.function_defintion, total_offset);
+    fixInvalidMovInstructions(program.function_defintion);
+    return program;
+}
+
 export function toString(program: Program): string {
     return JSON.stringify(program, null, 4);
 }
 
+function emitRegister(register: Register): string {
+    if (register.name === "r10") return `%r10d`;
+    else if (register.name === "ax") return `%eax`;
+    else throw new Error(`Cannot emit register ${register}`);
+}
+
 function emitOperand(operand: Operand): string {
     if (operand.kind === "Imm") return `$${operand.value}`;
-    else if (operand.kind === "Register") return `%${operand.name}`;
+    else if (operand.kind === "Register") return emitRegister(operand);
+    else if (operand.kind === "Stack") return `${operand.address}(%rbp)`;
     else throw new Error(`Could emit operand: ${operand}`);
+}
+
+function emitRet(ret: Ret): string {
+    let res = `movq %rbp, %rsp\n`;
+    res += `\tpopq %rbp\n`;
+    res += `\tret`;
+    return res;
+}
+
+function emitUnaryOperator(operator: UnaryOperator): string {
+    if (operator.operator_type === "not") return `notl`;
+    else if (operator.operator_type === "negate") return `negl`;
+    else throw new Error(`Cannot emit unary operator: ${operator}`);
+}
+
+function emitUnaryInstruction(unary: UnaryInstruction): string {
+    return `${emitUnaryOperator(unary.operator)} ${emitOperand(unary.operand)}`;
+}
+
+function emitAllocateStack(alloc: AllocateStack): string {
+    return `subq $${alloc.size}, %rsp`;
 }
 
 function emitInstruction(instruction: Instruction): string {
     if (instruction.kind === "Mov") return `movl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
-    else if (instruction.kind === "Ret") return `ret`;
+    else if (instruction.kind === "Ret") return emitRet(instruction);
+    else if (instruction.kind === "AllocateStack") return emitAllocateStack(instruction);
+    else if (instruction.kind === "UnaryInstruction") return emitUnaryInstruction(instruction);
     else throw new Error(`Could emit instruction: ${instruction}`);
 }
 
 function emitFunction(func: Function): string {
     return `\t.globl ${func.name.value}
 ${func.name.value}:
-\t${func.instructions.map(emitInstruction).join("\n\t")}
-    `;
+\tpushq %rbp
+\tmovq %rsp, %rbp
+\t${func.instructions.map(emitInstruction).join("\n\t")}`;
 }
 
 export function emit(program: Program): string {
