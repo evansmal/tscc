@@ -25,20 +25,32 @@ export interface Constant {
     value: number;
 }
 
-interface Complement {
-    kind: "Complement";
+export type UnaryOperand = "Complement" | "Negate" | "LogicalNot" | "LogicalAnd";
+
+export interface UnaryOperator {
+    kind: "UnaryOperator";
+    operand: UnaryOperand;
 }
 
-interface Negate {
-    kind: "Negate";
+export function UnaryOperator(operand: UnaryOperand): UnaryOperator {
+    return {
+        kind: "UnaryOperator",
+        operand
+    };
 }
-
-type UnaryOperator = Complement | Negate;
 
 export interface UnaryExpression {
     kind: "UnaryExpression";
     operator: UnaryOperator;
     expression: Expression;
+}
+
+function UnaryExpression(operator: UnaryOperator, expression: Expression): UnaryExpression {
+    return {
+        kind: "UnaryExpression",
+        operator,
+        expression
+    };
 }
 
 export interface Return {
@@ -64,27 +76,29 @@ function parseExpression(scanner: Scanner): Expression {
             value: parseInt(token.value)
         };
     } else if (token.kind === "bitwise_complement") {
-        return {
-            kind: "UnaryExpression",
-            operator: {
-                kind: "Complement"
-            },
-            expression: parseExpression(scanner)
-        };
+        return UnaryExpression(
+            UnaryOperator("Complement"),
+            parseExpression(scanner)
+        );
     } else if (token.kind === "negation") {
-        return {
-            kind: "UnaryExpression",
-            operator: {
-                kind: "Negate"
-            },
-            expression: parseExpression(scanner)
-        };
+        return UnaryExpression(
+            UnaryOperator("Negate"),
+            parseExpression(scanner)
+        );
     } else if (token.kind === "oparen") {
         const expr = parseExpression(scanner);
         expect("cparen", scanner);
         return expr;
     } else if (token.kind === "logical_not") {
-        throw new Error(`Cannot parse logical_not`);
+        return UnaryExpression(
+            UnaryOperator("LogicalNot"),
+            parseExpression(scanner)
+        );
+    } else if (token.kind === "logical_and") {
+        return UnaryExpression(
+            UnaryOperator("LogicalAnd"),
+            parseExpression(scanner)
+        );
     }
     else {
         throw new Error(`Could not parse expression '${token.kind}'`);

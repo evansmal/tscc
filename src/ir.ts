@@ -56,9 +56,9 @@ export interface Variable {
 
 export type Value = ConstantInteger | Variable;
 
-function lowerUnaryOperator(operator: UnaryOperator): UnaryOperator {
-    if (operator.kind === "Negate") return { kind: "Negate" };
-    else if (operator.kind === "Complement") return { kind: "Complement" };
+function lowerUnaryOperator(operator: Parser.UnaryOperator): UnaryOperator {
+    if (operator.operand === "Negate") return { kind: "Negate" };
+    else if (operator.operand === "Complement") return { kind: "Complement" };
     else throw new Error("Could not lower unary operator to IR");
 }
 
