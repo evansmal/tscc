@@ -83,8 +83,11 @@ function parseExpression(scanner: Scanner): Expression {
         const expr = parseExpression(scanner);
         expect("cparen", scanner);
         return expr;
-    } else {
-        throw new Error(`Could not parse expression`);
+    } else if (token.kind === "logical_not") {
+        throw new Error(`Cannot parse logical_not`);
+    }
+    else {
+        throw new Error(`Could not parse expression '${token.kind}'`);
     }
 }
 

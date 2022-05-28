@@ -4,6 +4,7 @@ export type TokenType = "identifier" | "return" | "oparen"
     | "obracket" | "cbracket" | "float"
     | "int" | "semicolon" | "string"
     | "bitwise_complement" | "decrement" | "negation"
+    | "logical_not" | "logical_and"
     | "comment" | "eof";
 
 export interface Token {
@@ -33,6 +34,8 @@ function readToken(input: string, position: number): Token | undefined {
         ["cbracket", /^\]/],
         ["semicolon", /^\;/],
         ["string", /^"(\\\\|\\"|[^"])*"/],
+        ["logical_not", /^\!/],
+        ["logical_and", /^\&&/],
         ["comment", /^\/\/.*/],
     ];
     for (let i = 0; i < patterns.length; i++) {
