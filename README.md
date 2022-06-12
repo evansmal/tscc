@@ -38,3 +38,5 @@ Where the stage is an integer value from 1 - 10. Currently, we pass test stages 
 ## References
 
 - [A Review of Assembly Language](http://www.scs.stanford.edu/nyu/04fa/notes/l2.pdf)
+
+- [Writing a C Compiler](https://norasandler.com/2017/11/29/Write-a-Compiler.html)
