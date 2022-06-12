@@ -25,21 +25,17 @@ export interface Return {
     value: Value;
 }
 
-export interface Complement {
-    kind: "Complement";
-}
-
-export interface Negate {
-    kind: "Negate";
-}
-
-export type UnaryOperator = Complement | Negate;
+export type UnaryOperator = "Complement" | "Negate" | "LogicalNot" | "LogicalAnd";
 
 export interface UnaryInstruction {
     kind: "UnaryInstruction";
     operator: UnaryOperator;
     src: Value;
     dst: Value;
+}
+
+function UnaryInstruction(operator: UnaryOperator, src: Value, dst: Value): UnaryInstruction {
+    return { kind: "UnaryInstruction", operator, src, dst };
 }
 
 export type Instruction = Return | UnaryInstruction;
@@ -57,9 +53,7 @@ export interface Variable {
 export type Value = ConstantInteger | Variable;
 
 function lowerUnaryOperator(operator: Parser.UnaryOperator): UnaryOperator {
-    if (operator.operand === "Negate") return { kind: "Negate" };
-    else if (operator.operand === "Complement") return { kind: "Complement" };
-    else throw new Error("Could not lower unary operator to IR");
+    return operator.operand;
 }
 
 function lowerExpression(expression: Parser.Expression, instructions: Instruction[], createVariable: () => Variable): Value {
@@ -67,12 +61,11 @@ function lowerExpression(expression: Parser.Expression, instructions: Instructio
         return { kind: "ConstantInteger", value: expression.value };
     } else if (expression.kind === "UnaryExpression") {
         const dst = createVariable();
-        const unary: UnaryInstruction = {
-            kind: "UnaryInstruction",
-            operator: lowerUnaryOperator(expression.operator),
-            src: lowerExpression(expression.expression, instructions, createVariable),
+        const unary = UnaryInstruction(
+            lowerUnaryOperator(expression.operator),
+            lowerExpression(expression.expression, instructions, createVariable),
             dst
-        };
+        );
         instructions.push(unary);
         return dst;
     }

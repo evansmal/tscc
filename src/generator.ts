@@ -25,7 +25,11 @@ interface Imm {
     value: number;
 }
 
-type RegisterName = "ax" | "r10";
+function Imm(value: number): Imm {
+    return { kind: "Imm", value };
+}
+
+type RegisterName = "ax" | "r10" | "r11";
 
 interface Register {
     kind: "Register";
@@ -65,6 +69,29 @@ function Mov(src: Operand, dst: Operand): Mov {
     return { kind: "Mov", src, dst };
 }
 
+interface Compare {
+    kind: "Compare";
+    src: Operand;
+    dst: Operand;
+
+}
+
+function Compare(src: Operand, dst: Operand): Compare {
+    return { kind: "Compare", src, dst }
+}
+
+type ConditionCode = "E" | "NE" | "L" | "LE" | "G" | "GE";
+
+interface SetConditionCode {
+    kind: "SetConditionCode";
+    code: ConditionCode;
+    operand: Operand;
+}
+
+function SetConditionCode(code: ConditionCode, operand: Operand): SetConditionCode {
+    return { kind: "SetConditionCode", code, operand };
+}
+
 interface Ret {
     kind: "Ret";
 }
@@ -97,11 +124,11 @@ function AllocateStack(size: number): AllocateStack {
     return { kind: "AllocateStack", size };
 }
 
-type Instruction = Mov | UnaryInstruction | AllocateStack | Ret;
+type Instruction = Mov | Compare | SetConditionCode | UnaryInstruction | AllocateStack | Ret;
 
 function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
-    if (operator.kind === "Complement") return { kind: "UnaryOperator", operator_type: "not" };
-    else if (operator.kind === "Negate") return { kind: "UnaryOperator", operator_type: "negate" };
+    if (operator === "Complement") return { kind: "UnaryOperator", operator_type: "not" };
+    else if (operator === "Negate") return { kind: "UnaryOperator", operator_type: "negate" };
     else throw new Error(`Could not lower IR.UnaryOperator type '${operator}'`);
 }
 
@@ -129,10 +156,21 @@ function lowerInstruction(instruction: IR.Instruction): Instruction[] {
         ];
     }
     else if (instruction.kind === "UnaryInstruction") {
-        return [
-            Mov(lowerValue(instruction.src), lowerValue(instruction.dst)),
-            UnaryInstruction(lowerUnaryOperator(instruction.operator), lowerValue(instruction.dst))
-        ];
+        if (instruction.operator === "LogicalNot") {
+            const dst = lowerValue(instruction.dst);
+            return [
+                Compare(Imm(0), lowerValue(instruction.src)),
+                Mov(Imm(0), dst),
+                SetConditionCode("E", dst)
+            ];
+        } else if (instruction.operator === "Negate" || instruction.operator === "Complement") {
+            return [
+                Mov(lowerValue(instruction.src), lowerValue(instruction.dst)),
+                UnaryInstruction(lowerUnaryOperator(instruction.operator), lowerValue(instruction.dst))
+            ];
+        } else {
+            throw new Error(`Could not lower IR.UnaryInstruction type '${instruction}'`);
+        }
     }
     else {
         throw new Error(`Could not lower IR.Instruction type '${instruction}'`);
@@ -165,6 +203,13 @@ function replacePseudoRegister(program: Program): number {
                 (inst.src.kind === "PseudoRegister" ? putOnStack(inst.src) : inst.src),
                 (inst.dst.kind === "PseudoRegister" ? putOnStack(inst.dst) : inst.dst)
             );
+        } else if (inst.kind === "Compare") {
+            const src = (inst.src.kind === "PseudoRegister" ? putOnStack(inst.src) : inst.src);
+            const dst = (inst.dst.kind === "PseudoRegister" ? putOnStack(inst.dst) : inst.dst);
+            return Compare(src, dst);
+        } else if (inst.kind === "SetConditionCode") {
+            const operand = (inst.operand.kind === "PseudoRegister" ? putOnStack(inst.operand) : inst.operand);
+            return SetConditionCode(inst.code, operand);
         }
         else if (inst.kind === "Ret" || inst.kind === "AllocateStack") return inst;
         else throw new Error(`Unexpected instruction encountered when trying to replaced pseudoregisters`);
@@ -179,11 +224,27 @@ function insertStackAllocation(func: Function, total_offset: number) {
 function fixInvalidMovInstructions(func: Function) {
     func.instructions = func.instructions.flatMap(inst => {
         if (inst.kind === "Mov" && inst.src.kind === "Stack" && inst.dst.kind === "Stack") {
-            const first: Mov = Mov(inst.src, Register("r10"));
-            const second: Mov = Mov(Register("r10"), inst.dst);
+            const first = Mov(inst.src, Register("r10"));
+            const second = Mov(Register("r10"), inst.dst);
             return [first, second];
         } else { return inst; }
     });
+}
+
+function fixInvalidCompareInstructions(func: Function) {
+    func.instructions = func.instructions.flatMap(inst => {
+        if (inst.kind === "Compare" && inst.src.kind === "Stack" && inst.dst.kind === "Stack") {
+            const first = Mov(inst.src, Register("r10"));
+            const second = Compare(Register("r10"), inst.dst);
+            return [first, second];
+        } else if (inst.kind === "Compare" && inst.dst.kind === "Imm") {
+            const first = Mov(inst.src, Register("r11"));
+            const second = Compare(Register("ax"), Register("r11"))
+            return [first, second];
+        }
+        else { return inst; }
+    });
+
 }
 
 export function generate(ir: IR.Program): Program {
@@ -194,6 +255,7 @@ export function generate(ir: IR.Program): Program {
     const total_offset = replacePseudoRegister(program);
     insertStackAllocation(program.function_defintion, total_offset);
     fixInvalidMovInstructions(program.function_defintion);
+    fixInvalidCompareInstructions(program.function_defintion);
     return program;
 }
 
@@ -204,21 +266,30 @@ export function toString(program: Program): string {
 function emitRegister(register: Register): string {
     if (register.name === "r10") return `%r10d`;
     else if (register.name === "ax") return `%eax`;
-    else throw new Error(`Cannot emit register ${register}`);
+    else if (register.name === "r11") return `%r11d`;
+    else throw new Error(`Cannot emit register ${JSON.stringify(register)}`);
 }
 
 function emitOperand(operand: Operand): string {
     if (operand.kind === "Imm") return `$${operand.value}`;
     else if (operand.kind === "Register") return emitRegister(operand);
     else if (operand.kind === "Stack") return `${operand.address}(%rbp)`;
-    else throw new Error(`Could emit operand: ${operand}`);
+    else throw new Error(`Could emit operand: ${JSON.stringify(operand)}`);
 }
 
-function emitRet(ret: Ret): string {
+function emitRet(_: Ret): string {
     let res = `movq %rbp, %rsp\n`;
     res += `\tpopq %rbp\n`;
     res += `\tret`;
     return res;
+}
+
+function emitCompare(instruction: Compare): string {
+    return `cmpl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
+}
+
+function emitSetConditionCode(instruction: SetConditionCode): string {
+    return `set${instruction.code} ${emitOperand(instruction.operand)}`;
 }
 
 function emitUnaryOperator(operator: UnaryOperator): string {
@@ -238,6 +309,8 @@ function emitAllocateStack(alloc: AllocateStack): string {
 function emitInstruction(instruction: Instruction): string {
     if (instruction.kind === "Mov") return `movl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
     else if (instruction.kind === "Ret") return emitRet(instruction);
+    else if (instruction.kind === "Compare") return emitCompare(instruction);
+    else if (instruction.kind === "SetConditionCode") return emitSetConditionCode(instruction);
     else if (instruction.kind === "AllocateStack") return emitAllocateStack(instruction);
     else if (instruction.kind === "UnaryInstruction") return emitUnaryInstruction(instruction);
     else throw new Error(`Could emit instruction: ${instruction}`);
