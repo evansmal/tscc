@@ -66,6 +66,7 @@ export function lex(input: string): Token[] {
 
 export interface Scanner {
     next(): Token;
+    peek(): Token;
 }
 
 export function getScanner(tokens: Token[]): Scanner {
@@ -74,6 +75,10 @@ export function getScanner(tokens: Token[]): Scanner {
         next: () => {
             if (pos >= tokens.length) return { kind: "eof", value: "", position: pos };
             else return tokens[pos++];
+        },
+        peek: () => {
+            if (pos === tokens.length) return { kind: "eof", value: "", position: pos };
+            else return tokens[pos];
         }
     }
 }

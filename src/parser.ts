@@ -1,4 +1,4 @@
-import { Scanner, TokenType, ToString } from "./lexer.js";
+import { Scanner, Token, TokenType, ToString } from "./lexer.js";
 
 export interface Program {
     kind: "Program"
@@ -58,6 +58,10 @@ export interface Return {
     expr: Expression;
 }
 
+export function Return(expr: Expression): Return {
+    return { kind: "Return", expr };
+}
+
 export type BinaryOperand = "Add" | "Subtract" | "Multiply" | "Divide" | "Mod";
 
 export interface BinaryOperator {
@@ -90,7 +94,8 @@ function expect(token_type: TokenType, scanner: Scanner) {
     return token;
 }
 
-function parseExpression(scanner: Scanner): Expression {
+// TODO: refactor unary ops using peek()
+function parseFactor(scanner: Scanner): Expression {
     const token = scanner.next();
     if (token.kind === "int") {
         return {
@@ -100,40 +105,75 @@ function parseExpression(scanner: Scanner): Expression {
     } else if (token.kind === "bitwise_complement") {
         return UnaryExpression(
             UnaryOperator("Complement"),
-            parseExpression(scanner)
+            parseExpression(scanner, 0)
         );
     } else if (token.kind === "negation") {
         return UnaryExpression(
             UnaryOperator("Negate"),
-            parseExpression(scanner)
+            parseExpression(scanner, 0)
         );
-    } else if (token.kind === "oparen") {
-        const expr = parseExpression(scanner);
-        expect("cparen", scanner);
-        return expr;
     } else if (token.kind === "logical_not") {
         return UnaryExpression(
             UnaryOperator("LogicalNot"),
-            parseExpression(scanner)
+            parseExpression(scanner, 0)
         );
     } else if (token.kind === "logical_and") {
         return UnaryExpression(
             UnaryOperator("LogicalAnd"),
-            parseExpression(scanner)
+            parseExpression(scanner, 0)
         );
-    }
-    else {
+    } else if (token.kind === "oparen") {
+        const expr = parseExpression(scanner, 0);
+        expect("cparen", scanner);
+        return expr;
+    } else {
         throw new Error(`Could not parse expression '${token.kind}'`);
     }
 }
 
+function parseBinaryOperator(scanner: Scanner): BinaryOperator {
+    const token = scanner.next();
+    if (token.kind === "plus") return BinaryOperator("Add");
+    else if (token.kind === "negation") return BinaryOperator("Subtract");
+    else if (token.kind === "asterisk") return BinaryOperator("Multiply");
+    else if (token.kind === "forward_slash") return BinaryOperator("Divide");
+    else if (token.kind === "percent") return BinaryOperator("Mod");
+    else throw new Error(`Could not parse binary operator '${token.kind}'`);
+}
+
+function isBinaryOperator(token: Token) {
+    return (token.kind === "plus"
+        || token.kind === "negation"
+        || token.kind === "asterisk"
+        || token.kind === "forward_slash"
+        || token.kind === "percent");
+}
+
+function getPrecedence(token: Token): number {
+    if (token.kind === "plus") return 45;
+    else if (token.kind === "negation") return 45;
+    else if (token.kind === "asterisk") return 50;
+    else if (token.kind === "percent") return 50;
+    else if (token.kind === "forward_slash") return 50;
+    else throw new Error(`Unknown precedence for token ${token.kind}`);
+}
+
+function parseExpression(scanner: Scanner, minimum_precedence: number): Expression {
+    let left = parseFactor(scanner);
+    let token = scanner.peek();
+    while (isBinaryOperator(token) && getPrecedence(token) >= minimum_precedence) {
+        const operator = parseBinaryOperator(scanner);
+        const right = parseExpression(scanner, getPrecedence(token));
+        left = BinaryExpression(operator, left, right);
+        token = scanner.peek();
+    }
+    return left;
+}
+
 function parseStatement(scanner: Scanner): Statement {
     expect("return", scanner);
-    const expression = parseExpression(scanner);
-    const statement: Return = {
-        kind: "Return",
-        expr: expression
-    }
+    const expression = parseExpression(scanner, 0);
+    const statement = Return(expression);
     expect("semicolon", scanner);
     return statement;
 }
