@@ -238,8 +238,8 @@ function fixInvalidCompareInstructions(func: Function) {
             const second = Compare(Register("r10"), inst.dst);
             return [first, second];
         } else if (inst.kind === "Compare" && inst.dst.kind === "Imm") {
-            const first = Mov(inst.src, Register("r11"));
-            const second = Compare(Register("ax"), Register("r11"))
+            const first = Mov(inst.dst, Register("r11"));
+            const second = Compare(inst.src, Register("r11"))
             return [first, second];
         }
         else { return inst; }
