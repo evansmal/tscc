@@ -58,7 +58,29 @@ export interface Return {
     expr: Expression;
 }
 
-export type Expression = Constant | UnaryExpression;
+export type BinaryOperand = "Add" | "Subtract" | "Multiply" | "Divide" | "Mod";
+
+export interface BinaryOperator {
+    kind: "BinaryOperator";
+    operand: BinaryOperand;
+}
+
+export function BinaryOperator(operand: BinaryOperand): BinaryOperator {
+    return { kind: "BinaryOperator", operand };
+}
+
+export interface BinaryExpression {
+    kind: "BinaryExpression";
+    operator: BinaryOperator;
+    left: Expression;
+    right: Expression;
+}
+
+export function BinaryExpression(operator: BinaryOperator, left: Expression, right: Expression): BinaryExpression {
+    return { kind: "BinaryExpression", operator, left, right };
+}
+
+export type Expression = Constant | UnaryExpression | BinaryExpression;
 
 export type Statement = Return;
 
