@@ -1,6 +1,6 @@
 # tscc
 
-##### An almost [C](https://en.wikipedia.org/wiki/C_(programming_language) compiler written in TypeScript.
+##### An almost [C](https://en.wikipedia.org/wiki/C_(programming_language)) compiler written in TypeScript.
 
 ![Build](https://github.com/evansmal/tscc/actions/workflows/main.yml/badge.svg)
 
