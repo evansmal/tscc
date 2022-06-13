@@ -338,7 +338,7 @@ function emitOperand(operand: Operand): string {
     else throw new Error(`Could emit operand: ${JSON.stringify(operand)}`);
 }
 
-function emitRet(_: Ret): string {
+function emitRet(): string {
     let res = `movq %rbp, %rsp\n`;
     res += `\tpopq %rbp\n`;
     res += `\tret`;
@@ -380,7 +380,7 @@ function emitAllocateStack(alloc: AllocateStack): string {
 
 function emitInstruction(instruction: Instruction): string {
     if (instruction.kind === "Mov") return `movl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
-    else if (instruction.kind === "Ret") return emitRet(instruction);
+    else if (instruction.kind === "Ret") return emitRet();
     else if (instruction.kind === "Compare") return emitCompare(instruction);
     else if (instruction.kind === "SetConditionCode") return emitSetConditionCode(instruction);
     else if (instruction.kind === "AllocateStack") return emitAllocateStack(instruction);
