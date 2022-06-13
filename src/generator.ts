@@ -230,6 +230,7 @@ function lowerFunction(func: IR.Function): Function {
 function replacePseudoRegister(program: Program): number {
     let total_offset = 0;
     const offsets = new Map<string, Stack>();
+
     const putOnStack = (reg: PseudoRegister) => {
         if (!offsets.has(reg.identifier.value)) {
             total_offset -= 4;
@@ -237,25 +238,22 @@ function replacePseudoRegister(program: Program): number {
         }
         return offsets.get(reg.identifier.value) as Stack;
     }
+
+    function replace(operand: Operand): Operand {
+        return (operand.kind === "PseudoRegister" ? putOnStack(operand) : operand);
+    }
+
     program.function_defintion.instructions = program.function_defintion.instructions.map(inst => {
         if (inst.kind === "UnaryInstruction") {
             return (inst.operand.kind === "PseudoRegister" ? UnaryInstruction(inst.operator, putOnStack(inst.operand)) : inst);
         } else if (inst.kind === "Mov") {
-            return Mov(
-                (inst.src.kind === "PseudoRegister" ? putOnStack(inst.src) : inst.src),
-                (inst.dst.kind === "PseudoRegister" ? putOnStack(inst.dst) : inst.dst)
-            );
+            return Mov(replace(inst.src), replace(inst.dst));
         } else if (inst.kind === "Compare") {
-            const src = (inst.src.kind === "PseudoRegister" ? putOnStack(inst.src) : inst.src);
-            const dst = (inst.dst.kind === "PseudoRegister" ? putOnStack(inst.dst) : inst.dst);
-            return Compare(src, dst);
+            return Compare(replace(inst.src), replace(inst.dst));
         } else if (inst.kind === "SetConditionCode") {
-            const operand = (inst.operand.kind === "PseudoRegister" ? putOnStack(inst.operand) : inst.operand);
-            return SetConditionCode(inst.code, operand);
+            return SetConditionCode(inst.code, replace(inst.operand));
         } else if (inst.kind === "BinaryInstruction") {
-            const src = (inst.src.kind === "PseudoRegister" ? putOnStack(inst.src) : inst.src);
-            const dst = (inst.dst.kind === "PseudoRegister" ? putOnStack(inst.dst) : inst.dst);
-            return BinaryInstruction(inst.operator, src, dst);
+            return BinaryInstruction(inst.operator, replace(inst.src), replace(inst.dst));
         }
         else if (inst.kind === "Ret" || inst.kind === "AllocateStack") return inst;
         else throw new Error(`Unexpected instruction encountered when trying to replaced pseudoregisters`);
