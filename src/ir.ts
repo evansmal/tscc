@@ -38,7 +38,21 @@ function UnaryInstruction(operator: UnaryOperator, src: Value, dst: Value): Unar
     return { kind: "UnaryInstruction", operator, src, dst };
 }
 
-export type Instruction = Return | UnaryInstruction;
+export type BinaryOperator = "Add" | "Subtract" | "Multiply" | "Divide" | "Mod";
+
+interface BinaryInstruction {
+    kind: "BinaryInstruction";
+    operator: BinaryOperator;
+    first: Value;
+    second: Value;
+    dst: Value;
+}
+
+function BinaryInstruction(operator: BinaryOperator, first: Value, second: Value, dst: Value): BinaryInstruction {
+    return { kind: "BinaryInstruction", operator, first, second, dst };
+}
+
+export type Instruction = Return | UnaryInstruction | BinaryInstruction;
 
 export interface ConstantInteger {
     kind: "ConstantInteger";
@@ -56,6 +70,10 @@ function lowerUnaryOperator(operator: Parser.UnaryOperator): UnaryOperator {
     return operator.operand;
 }
 
+function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
+    return operator.operand;
+}
+
 function lowerExpression(expression: Parser.Expression, instructions: Instruction[], createVariable: () => Variable): Value {
     if (expression.kind === "Constant") {
         return { kind: "ConstantInteger", value: expression.value };
@@ -68,9 +86,19 @@ function lowerExpression(expression: Parser.Expression, instructions: Instructio
         );
         instructions.push(unary);
         return dst;
-    }
-    else {
-        throw new Error("Could not lower AST expression into IR instruction");
+
+    } else if (expression.kind === "BinaryExpression") {
+        const dst = createVariable();
+        const binary = BinaryInstruction(
+            lowerBinaryOperator(expression.operator),
+            lowerExpression(expression.left, instructions, createVariable),
+            lowerExpression(expression.right, instructions, createVariable),
+            dst
+        );
+        instructions.push(binary);
+        return dst;
+    } else {
+        throw new Error(`Could not lower AST expression into IR instruction`);
     }
 }
 
