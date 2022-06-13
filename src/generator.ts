@@ -29,7 +29,7 @@ function Imm(value: number): Imm {
     return { kind: "Imm", value };
 }
 
-type RegisterName = "ax" | "r10" | "r11";
+type RegisterName = "ax" | "dx" | "r10" | "r11";
 
 interface Register {
     kind: "Register";
@@ -146,7 +146,22 @@ function AllocateStack(size: number): AllocateStack {
     return { kind: "AllocateStack", size };
 }
 
-type Instruction = Mov | Compare | SetConditionCode | UnaryInstruction | BinaryInstruction | AllocateStack | Ret;
+interface CDQ {
+    kind: "CDQ";
+}
+
+interface IDiv {
+    kind: "IDiv";
+    operand: Operand;
+}
+
+function IDiv(operand: Operand): IDiv {
+    return { kind: "IDiv", operand }
+}
+
+function CDQ(): CDQ { return { kind: "CDQ" }; }
+
+type Instruction = Mov | Compare | SetConditionCode | UnaryInstruction | BinaryInstruction | AllocateStack | Ret | CDQ | IDiv;
 
 function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
     if (operator === "Complement") return { kind: "UnaryOperator", operator_type: "Not" };
@@ -155,10 +170,8 @@ function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
 }
 
 function lowerBinaryOperator(operator: IR.BinaryOperator): BinaryOperator {
-    if (operator === "Add") return BinaryOperator("Add");
-    else if (operator === "Subtract") return BinaryOperator("Subtract");
-    else if (operator === "Multiply") return BinaryOperator("Multiply");
-    else throw new Error("Could not lower IR.BinaryOperator");
+    if (operator !== "Divide" && operator !== "Mod") return BinaryOperator(operator);
+    else throw new Error("Cannot lower IR.BinaryOperator");
 }
 
 function lowerValue(value: IR.Value): Operand {
@@ -197,11 +210,27 @@ function lowerUnaryInstruction(instruction: IR.UnaryInstruction): Instruction[] 
 }
 
 function lowerBinaryInstruction(instruction: IR.BinaryInstruction): Instruction[] {
-    return [
-        Mov(lowerValue(instruction.first), lowerValue(instruction.dst)),
-        BinaryInstruction(lowerBinaryOperator(instruction.operator),
-            lowerValue(instruction.second), lowerValue(instruction.dst))
-    ];
+    if (instruction.operator === "Divide") {
+        return [
+            Mov(lowerValue(instruction.first), Register("ax")),
+            CDQ(),
+            IDiv(lowerValue(instruction.second)),
+            Mov(Register("ax"), lowerValue(instruction.dst))
+        ];
+    } else if (instruction.operator === "Mod") {
+        return [
+            Mov(lowerValue(instruction.first), Register("ax")),
+            CDQ(),
+            IDiv(lowerValue(instruction.second)),
+            Mov(Register("dx"), lowerValue(instruction.dst))
+        ];
+    } else if (instruction.operator === "Multiply" || instruction.operator === "Subtract" || instruction.operator === "Add") {
+        return [
+            Mov(lowerValue(instruction.first), lowerValue(instruction.dst)),
+            BinaryInstruction(lowerBinaryOperator(instruction.operator),
+                lowerValue(instruction.second), lowerValue(instruction.dst))
+        ];
+    } else { throw new Error("Cannot lower IR.BinaryInstruction"); }
 }
 
 function lowerInstruction(instruction: IR.Instruction): Instruction[] {
@@ -254,8 +283,10 @@ function replacePseudoRegister(program: Program): number {
             return SetConditionCode(inst.code, replace(inst.operand));
         } else if (inst.kind === "BinaryInstruction") {
             return BinaryInstruction(inst.operator, replace(inst.src), replace(inst.dst));
+        } else if(inst.kind === "IDiv") {
+            return IDiv(replace(inst.operand));
         }
-        else if (inst.kind === "Ret" || inst.kind === "AllocateStack") return inst;
+        else if (inst.kind === "Ret" || inst.kind === "AllocateStack" || inst.kind === "CDQ") return inst;
         else throw new Error(`Unexpected instruction encountered when trying to replaced pseudoregisters`);
     });
     return total_offset;
@@ -307,6 +338,17 @@ function fixInvalidBinaryInstructions(func: Function) {
     });
 }
 
+function fixInvalidIDivInstructions(func: Function) {
+    func.instructions = func.instructions.flatMap(inst => {
+        if (inst.kind === "IDiv" && inst.operand.kind === "Imm") {
+            const first = Mov(inst.operand, Register("r10"));
+            const second = IDiv(Register("r10"));
+            return [first, second];
+        } else { return inst; }
+    });
+
+}
+
 export function generate(ir: IR.Program): Program {
     const program: Program = {
         kind: "Program",
@@ -317,6 +359,7 @@ export function generate(ir: IR.Program): Program {
     fixInvalidMovInstructions(program.function_defintion);
     fixInvalidCompareInstructions(program.function_defintion);
     fixInvalidBinaryInstructions(program.function_defintion);
+    fixInvalidIDivInstructions(program.function_defintion);
     return program;
 }
 
@@ -378,6 +421,14 @@ function emitAllocateStack(alloc: AllocateStack): string {
     return `subq $${alloc.size}, %rsp`;
 }
 
+function emitIDivInstruction(idiv: IDiv): string {
+    return `idivl ${emitOperand(idiv.operand)}`;
+}
+
+function emitCdq(): string {
+    return `cdq`;
+}
+
 function emitInstruction(instruction: Instruction): string {
     if (instruction.kind === "Mov") return `movl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
     else if (instruction.kind === "Ret") return emitRet();
@@ -386,6 +437,8 @@ function emitInstruction(instruction: Instruction): string {
     else if (instruction.kind === "AllocateStack") return emitAllocateStack(instruction);
     else if (instruction.kind === "UnaryInstruction") return emitUnaryInstruction(instruction);
     else if (instruction.kind === "BinaryInstruction") return emitBinaryInstruction(instruction);
+    else if (instruction.kind === "IDiv") return emitIDivInstruction(instruction);
+    else if (instruction.kind === "CDQ") return emitCdq();
     else throw new Error(`Could emit instruction: ${instruction}`);
 }
 
