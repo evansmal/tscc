@@ -126,14 +126,14 @@ function BinaryOperator(operand: BinaryOperand): BinaryOperator {
     return { kind: "BinaryOperator", operand };
 }
 
-interface BinaryInstruction {
+export interface BinaryInstruction {
     kind: "BinaryInstruction";
     operator: BinaryOperator;
     src: Operand;
     dst: Operand;
 }
 
-function BinaryInstruction(operator: BinaryOperator, src: Operand, dst: Operand): BinaryInstruction {
+export function BinaryInstruction(operator: BinaryOperator, src: Operand, dst: Operand): BinaryInstruction {
     return { kind: "BinaryInstruction", operator, src, dst };
 }
 
@@ -155,8 +155,9 @@ function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
 }
 
 function lowerBinaryOperator(operator: IR.BinaryOperator): BinaryOperator {
-    if(operator === "Add") return BinaryOperator("Add");
-    else if(operator === "Subtract") return BinaryOperator("Subtract");
+    if (operator === "Add") return BinaryOperator("Add");
+    else if (operator === "Subtract") return BinaryOperator("Subtract");
+    else if (operator === "Multiply") return BinaryOperator("Multiply");
     else throw new Error("Could not lower IR.BinaryOperator");
 }
 
@@ -176,6 +177,33 @@ function lowerValue(value: IR.Value): Operand {
     }
 }
 
+function lowerUnaryInstruction(instruction: IR.UnaryInstruction): Instruction[] {
+    if (instruction.operator === "LogicalNot") {
+        const dst = lowerValue(instruction.dst);
+        return [
+            Compare(Imm(0), lowerValue(instruction.src)),
+            Mov(Imm(0), dst),
+            SetConditionCode("E", dst)
+        ];
+    } else if (instruction.operator === "Negate" || instruction.operator === "Complement") {
+        return [
+            Mov(lowerValue(instruction.src), lowerValue(instruction.dst)),
+            UnaryInstruction(lowerUnaryOperator(instruction.operator), lowerValue(instruction.dst))
+        ];
+
+    } else {
+        throw new Error(`Could not lower IR.UnaryInstruction type '${instruction}'`);
+    }
+}
+
+function lowerBinaryInstruction(instruction: IR.BinaryInstruction): Instruction[] {
+    return [
+        Mov(lowerValue(instruction.first), lowerValue(instruction.dst)),
+        BinaryInstruction(lowerBinaryOperator(instruction.operator),
+            lowerValue(instruction.second), lowerValue(instruction.dst))
+    ];
+}
+
 function lowerInstruction(instruction: IR.Instruction): Instruction[] {
     if (instruction.kind === "Return") {
         return [
@@ -183,27 +211,9 @@ function lowerInstruction(instruction: IR.Instruction): Instruction[] {
             Ret()
         ];
     } else if (instruction.kind === "UnaryInstruction") {
-        if (instruction.operator === "LogicalNot") {
-            const dst = lowerValue(instruction.dst);
-            return [
-                Compare(Imm(0), lowerValue(instruction.src)),
-                Mov(Imm(0), dst),
-                SetConditionCode("E", dst)
-            ];
-        } else if (instruction.operator === "Negate" || instruction.operator === "Complement") {
-            return [
-                Mov(lowerValue(instruction.src), lowerValue(instruction.dst)),
-                UnaryInstruction(lowerUnaryOperator(instruction.operator), lowerValue(instruction.dst))
-            ];
-
-        } else {
-            throw new Error(`Could not lower IR.UnaryInstruction type '${instruction}'`);
-        }
+        return lowerUnaryInstruction(instruction);
     } else if (instruction.kind === "BinaryInstruction") {
-        return [
-            Mov(lowerValue(instruction.first), lowerValue(instruction.dst)),
-            BinaryInstruction(lowerBinaryOperator(instruction.operator), lowerValue(instruction.second), lowerValue(instruction.dst))
-        ];
+        return lowerBinaryInstruction(instruction);
     } else {
         throw new Error(`Could not lower IR.Instruction type '${instruction}'`);
     }
@@ -288,6 +298,12 @@ function fixInvalidBinaryInstructions(func: Function) {
             const first = Mov(inst.src, Register("r10"));
             const second = BinaryInstruction(inst.operator, Register("r10"), inst.dst);
             return [first, second];
+        } else if (inst.kind === "BinaryInstruction" && inst.operator.operand === "Multiply" && inst.dst.kind === "Stack") {
+            return [
+                Mov(inst.dst, Register("r11")),
+                BinaryInstruction(inst.operator, inst.src, Register("r11")),
+                Mov(Register("r11"), inst.dst)
+            ];
         }
         else { return inst; }
     });
@@ -352,6 +368,7 @@ function emitUnaryInstruction(unary: UnaryInstruction): string {
 function emitBinaryOperator(operator: BinaryOperator): string {
     if (operator.operand === "Add") return `addl`;
     else if (operator.operand === "Subtract") return `subl`;
+    else if (operator.operand === "Multiply") return `imull`;
     else throw new Error(`Could not emit binary operator: ${JSON.stringify(operator)}`);
 }
 

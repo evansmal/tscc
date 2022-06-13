@@ -40,7 +40,7 @@ function UnaryInstruction(operator: UnaryOperator, src: Value, dst: Value): Unar
 
 export type BinaryOperator = "Add" | "Subtract" | "Multiply" | "Divide" | "Mod";
 
-interface BinaryInstruction {
+export interface BinaryInstruction {
     kind: "BinaryInstruction";
     operator: BinaryOperator;
     first: Value;
@@ -48,7 +48,7 @@ interface BinaryInstruction {
     dst: Value;
 }
 
-function BinaryInstruction(operator: BinaryOperator, first: Value, second: Value, dst: Value): BinaryInstruction {
+export function BinaryInstruction(operator: BinaryOperator, first: Value, second: Value, dst: Value): BinaryInstruction {
     return { kind: "BinaryInstruction", operator, first, second, dst };
 }
 
