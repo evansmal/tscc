@@ -163,7 +163,7 @@ function parseExpression(scanner: Scanner, minimum_precedence: number): Expressi
     let token = scanner.peek();
     while (isBinaryOperator(token) && getPrecedence(token) >= minimum_precedence) {
         const operator = parseBinaryOperator(scanner);
-        const right = parseExpression(scanner, getPrecedence(token));
+        const right = parseExpression(scanner, getPrecedence(token) + 1);
         left = BinaryExpression(operator, left, right);
         token = scanner.peek();
     }
