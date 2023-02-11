@@ -1,17 +1,14 @@
 {
-    "include": [
-        "src/*.ts"
-    ],
+    "include": ["src/*.ts"],
     "compilerOptions": {
         "strict": true,
         "alwaysStrict": true,
         "allowUnreachableCode": false,
+        "noImplicitAny": true,
         "allowUnusedLabels": false,
         "experimentalDecorators": true,
         "emitDecoratorMetadata": true,
-        "lib": [
-            "esnext"
-        ],
+        "lib": ["esnext"],
         "declaration": true,
         "skipLibCheck": true,
         "sourceMap": true,
