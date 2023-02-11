@@ -452,6 +452,37 @@ function operandToString(operand: Operand): string {
     else if (operand.kind === "Stack") return `stack[${operand.address}]`;
     else throw new Error("Cannot convert operand to string");
 }
+function binaryInstructionToString(instruction: BinaryInstruction) {
+    let output = "";
+    if (instruction.operator.operand === "Add") {
+        output += `ADD ${operandToString(instruction.src)}, ${operandToString(
+            instruction.dst
+        )}`;
+    } else if (instruction.operator.operand === "Multiply") {
+        output += `MUL ${operandToString(instruction.src)} ${operandToString(
+            instruction.dst
+        )}`;
+    } else if (instruction.operator.operand === "Subtract") {
+        output += `SUB ${operandToString(instruction.src)} ${operandToString(
+            instruction.dst
+        )}`;
+    } else {
+        throw new Error("Cannot lower binary operator to string");
+    }
+    return output;
+}
+
+function unaryInstructionToString(instruction: UnaryInstruction) {
+    let output = "";
+    if (instruction.operator.operator_type === "Negate") {
+        output += `NEG ${operandToString(instruction.operand)}`;
+    } else if (instruction.operator.operator_type === "Not") {
+        output += `NOT ${operandToString(instruction.operand)}`;
+    } else {
+        throw new Error("Cannot lower operand type to string");
+    }
+    return output;
+}
 
 function instructionToString(instruction: Instruction): string {
     let output = "";
@@ -464,29 +495,9 @@ function instructionToString(instruction: Instruction): string {
             instruction.dst
         )}`;
     else if (instruction.kind === "UnaryInstruction") {
-        if (instruction.operator.operator_type === "Negate") {
-            output += `NEG ${operandToString(instruction.operand)}`;
-        } else if (instruction.operator.operator_type === "Not") {
-            output += `NOT ${operandToString(instruction.operand)}`;
-        } else {
-            throw new Error("Cannot lower operand type to string");
-        }
+        output += unaryInstructionToString(instruction);
     } else if (instruction.kind === "BinaryInstruction") {
-        if (instruction.operator.operand === "Add") {
-            output += `ADD ${operandToString(
-                instruction.src
-            )} ${operandToString(instruction.dst)}`;
-        } else if (instruction.operator.operand === "Multiply") {
-            output += `MUL ${operandToString(
-                instruction.src
-            )} ${operandToString(instruction.dst)}`;
-        } else if (instruction.operator.operand === "Subtract") {
-            output += `SUB ${operandToString(
-                instruction.src
-            )} ${operandToString(instruction.dst)}`;
-        } else {
-            throw new Error("Cannot lower binary operator to string");
-        }
+        output += binaryInstructionToString(instruction);
     } else if (instruction.kind === "AllocateStack") {
         output += `AC ${instruction.size}`;
     } else if (instruction.kind === "Ret") {
