@@ -117,13 +117,10 @@ function parseFactor(scanner: Scanner): Expression {
     } else if (token.kind === "bitwise_complement") {
         return UnaryExpression(
             UnaryOperator("Complement"),
-            parseExpression(scanner, 0)
+            parseFactor(scanner)
         );
     } else if (token.kind === "negation") {
-        return UnaryExpression(
-            UnaryOperator("Negate"),
-            parseExpression(scanner, 0)
-        );
+        return UnaryExpression(UnaryOperator("Negate"), parseFactor(scanner));
     } else if (token.kind === "logical_not") {
         return UnaryExpression(
             UnaryOperator("LogicalNot"),
@@ -230,6 +227,10 @@ function indent(block: string) {
         .trim();
 }
 
+function operatorToString(operator: BinaryOperator) {
+    return `${operator.operand}`;
+}
+
 function exprToString(expression: Expression): string {
     let result = indent(`Expression:${expression.kind}\n`);
     if (expression.kind === "Constant")
@@ -238,12 +239,22 @@ function exprToString(expression: Expression): string {
         result +=
             "\n" +
             [
+                `op: ${expression.operator.operand}`,
                 `left: ${exprToString(expression.left)}`,
                 `right: ${exprToString(expression.right)}`
             ]
                 .map(indent)
                 .join("\n");
-    else throw Error("Cannot convert Expression to string");
+    else if (expression.kind === "UnaryExpression") {
+        result +=
+            "\n" +
+            [
+                `op: ${expression.operator.operand}`,
+                `expr: ${indent(exprToString(expression.expression))}`
+            ]
+                .map(indent)
+                .join("\n");
+    } else throw Error("Cannot convert Expression to string");
     return result;
 }
 
