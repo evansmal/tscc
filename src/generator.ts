@@ -444,8 +444,63 @@ export function generate(ir: IR.Program): Program {
     return program;
 }
 
+function operandToString(operand: Operand): string {
+    if (operand.kind === "Imm") return `${operand.value}`;
+    else if (operand.kind === "Register") return operand.name;
+    else if (operand.kind === "PseudoRegister")
+        return `${operand.identifier.value}`;
+    else if (operand.kind === "Stack") return `stack[${operand.address}]`;
+    else throw new Error("Cannot convert operand to string");
+}
+
+function instructionToString(instruction: Instruction): string {
+    let output = "";
+    if (instruction.kind === "Mov")
+        output += `MOV ${operandToString(instruction.src)}, ${operandToString(
+            instruction.dst
+        )}`;
+    else if (instruction.kind === "Compare")
+        output += `CMP ${operandToString(instruction.src)}, ${operandToString(
+            instruction.dst
+        )}`;
+    else if (instruction.kind === "UnaryInstruction") {
+        if (instruction.operator.operator_type === "Negate") {
+            output += `NEG ${operandToString(instruction.operand)}`;
+        } else if (instruction.operator.operator_type === "Not") {
+            output += `NOT ${operandToString(instruction.operand)}`;
+        } else {
+            throw new Error("Cannot lower operand type to string");
+        }
+    } else if (instruction.kind === "BinaryInstruction") {
+        if (instruction.operator.operand === "Add") {
+            output += `ADD ${operandToString(
+                instruction.src
+            )} ${operandToString(instruction.dst)}`;
+        } else if (instruction.operator.operand === "Multiply") {
+            output += `MUL ${operandToString(
+                instruction.src
+            )} ${operandToString(instruction.dst)}`;
+        } else if (instruction.operator.operand === "Subtract") {
+            output += `SUB ${operandToString(
+                instruction.src
+            )} ${operandToString(instruction.dst)}`;
+        } else {
+            throw new Error("Cannot lower binary operator to string");
+        }
+    } else if (instruction.kind === "AllocateStack") {
+        output += `AC ${instruction.size}`;
+    } else if (instruction.kind === "Ret") {
+        output += `RET`;
+    } else {
+        output += instruction.kind.toUpperCase();
+    }
+    return output;
+}
+
 export function toString(program: Program): string {
-    return JSON.stringify(program, null, 4);
+    return program.function_defintion.instructions
+        .map(instructionToString)
+        .join("\n");
 }
 
 function emitRegister(register: Register): string {
