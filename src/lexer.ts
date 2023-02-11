@@ -1,18 +1,33 @@
-
-export type TokenType = "identifier" | "return" | "oparen"
-    | "cparen" | "obrace" | "cbrace"
-    | "obracket" | "cbracket" | "float"
-    | "int" | "semicolon" | "string"
-    | "bitwise_complement" | "decrement" | "negation"
-    | "logical_not" | "logical_and" | "plus"
-    | "asterisk" | "forward_slash" | "percent"
-    | "comment" | "eof";
+export type TokenType =
+    | "identifier"
+    | "return"
+    | "oparen"
+    | "cparen"
+    | "obrace"
+    | "cbrace"
+    | "obracket"
+    | "cbracket"
+    | "float"
+    | "int"
+    | "semicolon"
+    | "string"
+    | "bitwise_complement"
+    | "decrement"
+    | "negation"
+    | "logical_not"
+    | "logical_and"
+    | "plus"
+    | "asterisk"
+    | "forward_slash"
+    | "percent"
+    | "comment"
+    | "eof";
 
 export interface Token {
-    kind: TokenType
+    kind: TokenType;
     value: string;
     position: number;
-};
+}
 
 export function ToString(token: Token): string {
     return `${token.kind} [${token.value}@${token.position}]`;
@@ -41,7 +56,7 @@ function readToken(input: string, position: number): Token | undefined {
         ["asterisk", /^\*/],
         ["forward_slash", /^\//],
         ["percent", /^\//],
-        ["comment", /^\/\/.*/],
+        ["comment", /^\/\/.*/]
     ];
     for (let i = 0; i < patterns.length; i++) {
         const [kind, regex] = patterns[i];
@@ -58,8 +73,12 @@ export function lex(input: string): Token[] {
     let pos = 0;
     while (pos < input.length) {
         const token = readToken(input, pos);
-        if (token) { tokens.push(token); pos += token.value.length }
-        else { pos += 1 }
+        if (token) {
+            tokens.push(token);
+            pos += token.value.length;
+        } else {
+            pos += 1;
+        }
     }
     return tokens;
 }
@@ -73,12 +92,14 @@ export function getScanner(tokens: Token[]): Scanner {
     let pos = 0;
     return {
         next: () => {
-            if (pos >= tokens.length) return { kind: "eof", value: "", position: pos };
+            if (pos >= tokens.length)
+                return { kind: "eof", value: "", position: pos };
             else return tokens[pos++];
         },
         peek: () => {
-            if (pos === tokens.length) return { kind: "eof", value: "", position: pos };
+            if (pos === tokens.length)
+                return { kind: "eof", value: "", position: pos };
             else return tokens[pos];
         }
-    }
+    };
 }

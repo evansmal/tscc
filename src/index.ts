@@ -1,5 +1,5 @@
 import { readFileSync } from "fs";
-import { argv } from 'process';
+import { argv } from "process";
 import { execSync } from "child_process";
 
 import * as Lexer from "./lexer.js";
@@ -8,8 +8,11 @@ import * as IR from "./ir.js";
 import * as Generator from "./generator.js";
 
 function assemble(source: string, output_filepath: string) {
-    const buffer = execSync(`gcc -o ${output_filepath} -xassembler -`, { stdio: ['pipe', 'pipe', 'pipe'], input: source });
-    //console.log(buffer.toString());
+    const _ = execSync(`gcc -o ${output_filepath} -xassembler -`, {
+        stdio: ["pipe", "pipe", "pipe"],
+        input: source
+    });
+    //console.log(_);
 }
 
 interface Options {
@@ -46,7 +49,7 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
     }
 
     try {
-        assemble(output, output_filepath)
+        assemble(output, output_filepath);
     } catch (e) {
         console.error(e);
         process.exit(2);
@@ -58,7 +61,9 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
 function main() {
     if (argv.length < 3) {
         console.log(`Got ${argv.length - 2} arguments but expected at least 1`);
-        console.log(`Usage: tscc <input_filepath> [--input] [--lex] [--ast] [--ir] [--asm] [--out]`);
+        console.log(
+            `Usage: tscc <input_filepath> [--input] [--lex] [--ast] [--ir] [--asm] [--out]`
+        );
         process.exit(0);
     }
     const input_filepath = argv[2];

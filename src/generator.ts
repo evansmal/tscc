@@ -73,11 +73,10 @@ interface Compare {
     kind: "Compare";
     src: Operand;
     dst: Operand;
-
 }
 
 function Compare(src: Operand, dst: Operand): Compare {
-    return { kind: "Compare", src, dst }
+    return { kind: "Compare", src, dst };
 }
 
 type ConditionCode = "E" | "NE" | "L" | "LE" | "G" | "GE";
@@ -88,7 +87,10 @@ interface SetConditionCode {
     operand: Operand;
 }
 
-function SetConditionCode(code: ConditionCode, operand: Operand): SetConditionCode {
+function SetConditionCode(
+    code: ConditionCode,
+    operand: Operand
+): SetConditionCode {
     return { kind: "SetConditionCode", code, operand };
 }
 
@@ -111,7 +113,10 @@ interface UnaryInstruction {
     operand: Operand;
 }
 
-function UnaryInstruction(operator: UnaryOperator, operand: Operand): UnaryInstruction {
+function UnaryInstruction(
+    operator: UnaryOperator,
+    operand: Operand
+): UnaryInstruction {
     return { kind: "UnaryInstruction", operator, operand };
 }
 
@@ -133,7 +138,11 @@ export interface BinaryInstruction {
     dst: Operand;
 }
 
-export function BinaryInstruction(operator: BinaryOperator, src: Operand, dst: Operand): BinaryInstruction {
+export function BinaryInstruction(
+    operator: BinaryOperator,
+    src: Operand,
+    dst: Operand
+): BinaryInstruction {
     return { kind: "BinaryInstruction", operator, src, dst };
 }
 
@@ -156,21 +165,35 @@ interface IDiv {
 }
 
 function IDiv(operand: Operand): IDiv {
-    return { kind: "IDiv", operand }
+    return { kind: "IDiv", operand };
 }
 
-function CDQ(): CDQ { return { kind: "CDQ" }; }
+function CDQ(): CDQ {
+    return { kind: "CDQ" };
+}
 
-type Instruction = Mov | Compare | SetConditionCode | UnaryInstruction | BinaryInstruction | AllocateStack | Ret | CDQ | IDiv;
+type Instruction =
+    | Mov
+    | Compare
+    | SetConditionCode
+    | UnaryInstruction
+    | BinaryInstruction
+    | AllocateStack
+    | Ret
+    | CDQ
+    | IDiv;
 
 function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
-    if (operator === "Complement") return { kind: "UnaryOperator", operator_type: "Not" };
-    else if (operator === "Negate") return { kind: "UnaryOperator", operator_type: "Negate" };
+    if (operator === "Complement")
+        return { kind: "UnaryOperator", operator_type: "Not" };
+    else if (operator === "Negate")
+        return { kind: "UnaryOperator", operator_type: "Negate" };
     else throw new Error(`Could not lower IR.UnaryOperator type '${operator}'`);
 }
 
 function lowerBinaryOperator(operator: IR.BinaryOperator): BinaryOperator {
-    if (operator !== "Divide" && operator !== "Mod") return BinaryOperator(operator);
+    if (operator !== "Divide" && operator !== "Mod")
+        return BinaryOperator(operator);
     else throw new Error("Cannot lower IR.BinaryOperator");
 }
 
@@ -179,7 +202,7 @@ function lowerValue(value: IR.Value): Operand {
         return {
             kind: "Imm",
             value: value.value
-        }
+        };
     } else if (value.kind === "Variable") {
         return {
             kind: "PseudoRegister",
@@ -190,7 +213,9 @@ function lowerValue(value: IR.Value): Operand {
     }
 }
 
-function lowerUnaryInstruction(instruction: IR.UnaryInstruction): Instruction[] {
+function lowerUnaryInstruction(
+    instruction: IR.UnaryInstruction
+): Instruction[] {
     if (instruction.operator === "LogicalNot") {
         const dst = lowerValue(instruction.dst);
         return [
@@ -198,18 +223,27 @@ function lowerUnaryInstruction(instruction: IR.UnaryInstruction): Instruction[] 
             Mov(Imm(0), dst),
             SetConditionCode("E", dst)
         ];
-    } else if (instruction.operator === "Negate" || instruction.operator === "Complement") {
+    } else if (
+        instruction.operator === "Negate" ||
+        instruction.operator === "Complement"
+    ) {
         return [
             Mov(lowerValue(instruction.src), lowerValue(instruction.dst)),
-            UnaryInstruction(lowerUnaryOperator(instruction.operator), lowerValue(instruction.dst))
+            UnaryInstruction(
+                lowerUnaryOperator(instruction.operator),
+                lowerValue(instruction.dst)
+            )
         ];
-
     } else {
-        throw new Error(`Could not lower IR.UnaryInstruction type '${instruction}'`);
+        throw new Error(
+            `Could not lower IR.UnaryInstruction type '${instruction}'`
+        );
     }
 }
 
-function lowerBinaryInstruction(instruction: IR.BinaryInstruction): Instruction[] {
+function lowerBinaryInstruction(
+    instruction: IR.BinaryInstruction
+): Instruction[] {
     if (instruction.operator === "Divide") {
         return [
             Mov(lowerValue(instruction.first), Register("ax")),
@@ -224,21 +258,27 @@ function lowerBinaryInstruction(instruction: IR.BinaryInstruction): Instruction[
             IDiv(lowerValue(instruction.second)),
             Mov(Register("dx"), lowerValue(instruction.dst))
         ];
-    } else if (instruction.operator === "Multiply" || instruction.operator === "Subtract" || instruction.operator === "Add") {
+    } else if (
+        instruction.operator === "Multiply" ||
+        instruction.operator === "Subtract" ||
+        instruction.operator === "Add"
+    ) {
         return [
             Mov(lowerValue(instruction.first), lowerValue(instruction.dst)),
-            BinaryInstruction(lowerBinaryOperator(instruction.operator),
-                lowerValue(instruction.second), lowerValue(instruction.dst))
+            BinaryInstruction(
+                lowerBinaryOperator(instruction.operator),
+                lowerValue(instruction.second),
+                lowerValue(instruction.dst)
+            )
         ];
-    } else { throw new Error("Cannot lower IR.BinaryInstruction"); }
+    } else {
+        throw new Error("Cannot lower IR.BinaryInstruction");
+    }
 }
 
 function lowerInstruction(instruction: IR.Instruction): Instruction[] {
     if (instruction.kind === "Return") {
-        return [
-            Mov(lowerValue(instruction.value), Register("ax")),
-            Ret()
-        ];
+        return [Mov(lowerValue(instruction.value), Register("ax")), Ret()];
     } else if (instruction.kind === "UnaryInstruction") {
         return lowerUnaryInstruction(instruction);
     } else if (instruction.kind === "BinaryInstruction") {
@@ -266,29 +306,45 @@ function replacePseudoRegister(program: Program): number {
             offsets.set(reg.identifier.value, Stack(total_offset));
         }
         return offsets.get(reg.identifier.value) as Stack;
-    }
+    };
 
     function replace(operand: Operand): Operand {
-        return (operand.kind === "PseudoRegister" ? putOnStack(operand) : operand);
+        return operand.kind === "PseudoRegister"
+            ? putOnStack(operand)
+            : operand;
     }
 
-    program.function_defintion.instructions = program.function_defintion.instructions.map(inst => {
-        if (inst.kind === "UnaryInstruction") {
-            return (inst.operand.kind === "PseudoRegister" ? UnaryInstruction(inst.operator, putOnStack(inst.operand)) : inst);
-        } else if (inst.kind === "Mov") {
-            return Mov(replace(inst.src), replace(inst.dst));
-        } else if (inst.kind === "Compare") {
-            return Compare(replace(inst.src), replace(inst.dst));
-        } else if (inst.kind === "SetConditionCode") {
-            return SetConditionCode(inst.code, replace(inst.operand));
-        } else if (inst.kind === "BinaryInstruction") {
-            return BinaryInstruction(inst.operator, replace(inst.src), replace(inst.dst));
-        } else if(inst.kind === "IDiv") {
-            return IDiv(replace(inst.operand));
-        }
-        else if (inst.kind === "Ret" || inst.kind === "AllocateStack" || inst.kind === "CDQ") return inst;
-        else throw new Error(`Unexpected instruction encountered when trying to replaced pseudoregisters`);
-    });
+    program.function_defintion.instructions =
+        program.function_defintion.instructions.map((inst) => {
+            if (inst.kind === "UnaryInstruction") {
+                return inst.operand.kind === "PseudoRegister"
+                    ? UnaryInstruction(inst.operator, putOnStack(inst.operand))
+                    : inst;
+            } else if (inst.kind === "Mov") {
+                return Mov(replace(inst.src), replace(inst.dst));
+            } else if (inst.kind === "Compare") {
+                return Compare(replace(inst.src), replace(inst.dst));
+            } else if (inst.kind === "SetConditionCode") {
+                return SetConditionCode(inst.code, replace(inst.operand));
+            } else if (inst.kind === "BinaryInstruction") {
+                return BinaryInstruction(
+                    inst.operator,
+                    replace(inst.src),
+                    replace(inst.dst)
+                );
+            } else if (inst.kind === "IDiv") {
+                return IDiv(replace(inst.operand));
+            } else if (
+                inst.kind === "Ret" ||
+                inst.kind === "AllocateStack" ||
+                inst.kind === "CDQ"
+            )
+                return inst;
+            else
+                throw new Error(
+                    `Unexpected instruction encountered when trying to replaced pseudoregisters`
+                );
+        });
     return total_offset;
 }
 
@@ -297,63 +353,88 @@ function insertStackAllocation(func: Function, total_offset: number) {
 }
 
 function fixInvalidMovInstructions(func: Function) {
-    func.instructions = func.instructions.flatMap(inst => {
-        if (inst.kind === "Mov" && inst.src.kind === "Stack" && inst.dst.kind === "Stack") {
+    func.instructions = func.instructions.flatMap((inst) => {
+        if (
+            inst.kind === "Mov" &&
+            inst.src.kind === "Stack" &&
+            inst.dst.kind === "Stack"
+        ) {
             const first = Mov(inst.src, Register("r10"));
             const second = Mov(Register("r10"), inst.dst);
             return [first, second];
-        } else { return inst; }
+        } else {
+            return inst;
+        }
     });
 }
 
 function fixInvalidCompareInstructions(func: Function) {
-    func.instructions = func.instructions.flatMap(inst => {
-        if (inst.kind === "Compare" && inst.src.kind === "Stack" && inst.dst.kind === "Stack") {
+    func.instructions = func.instructions.flatMap((inst) => {
+        if (
+            inst.kind === "Compare" &&
+            inst.src.kind === "Stack" &&
+            inst.dst.kind === "Stack"
+        ) {
             const first = Mov(inst.src, Register("r10"));
             const second = Compare(Register("r10"), inst.dst);
             return [first, second];
         } else if (inst.kind === "Compare" && inst.dst.kind === "Imm") {
             const first = Mov(inst.dst, Register("r11"));
-            const second = Compare(inst.src, Register("r11"))
+            const second = Compare(inst.src, Register("r11"));
             return [first, second];
+        } else {
+            return inst;
         }
-        else { return inst; }
     });
 }
 
 function fixInvalidBinaryInstructions(func: Function) {
-    func.instructions = func.instructions.flatMap(inst => {
-        if (inst.kind === "BinaryInstruction" && inst.src.kind === "Stack" && inst.dst.kind === "Stack") {
+    func.instructions = func.instructions.flatMap((inst) => {
+        if (
+            inst.kind === "BinaryInstruction" &&
+            inst.src.kind === "Stack" &&
+            inst.dst.kind === "Stack"
+        ) {
             const first = Mov(inst.src, Register("r10"));
-            const second = BinaryInstruction(inst.operator, Register("r10"), inst.dst);
+            const second = BinaryInstruction(
+                inst.operator,
+                Register("r10"),
+                inst.dst
+            );
             return [first, second];
-        } else if (inst.kind === "BinaryInstruction" && inst.operator.operand === "Multiply" && inst.dst.kind === "Stack") {
+        } else if (
+            inst.kind === "BinaryInstruction" &&
+            inst.operator.operand === "Multiply" &&
+            inst.dst.kind === "Stack"
+        ) {
             return [
                 Mov(inst.dst, Register("r11")),
                 BinaryInstruction(inst.operator, inst.src, Register("r11")),
                 Mov(Register("r11"), inst.dst)
             ];
+        } else {
+            return inst;
         }
-        else { return inst; }
     });
 }
 
 function fixInvalidIDivInstructions(func: Function) {
-    func.instructions = func.instructions.flatMap(inst => {
+    func.instructions = func.instructions.flatMap((inst) => {
         if (inst.kind === "IDiv" && inst.operand.kind === "Imm") {
             const first = Mov(inst.operand, Register("r10"));
             const second = IDiv(Register("r10"));
             return [first, second];
-        } else { return inst; }
+        } else {
+            return inst;
+        }
     });
-
 }
 
 export function generate(ir: IR.Program): Program {
     const program: Program = {
         kind: "Program",
         function_defintion: lowerFunction(ir.functions[0])
-    }
+    };
     const total_offset = replacePseudoRegister(program);
     insertStackAllocation(program.function_defintion, total_offset);
     fixInvalidMovInstructions(program.function_defintion);
@@ -389,7 +470,9 @@ function emitRet(): string {
 }
 
 function emitCompare(instruction: Compare): string {
-    return `cmpl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
+    return `cmpl ${emitOperand(instruction.src)}, ${emitOperand(
+        instruction.dst
+    )}`;
 }
 
 function emitSetConditionCode(instruction: SetConditionCode): string {
@@ -410,11 +493,16 @@ function emitBinaryOperator(operator: BinaryOperator): string {
     if (operator.operand === "Add") return `addl`;
     else if (operator.operand === "Subtract") return `subl`;
     else if (operator.operand === "Multiply") return `imull`;
-    else throw new Error(`Could not emit binary operator: ${JSON.stringify(operator)}`);
+    else
+        throw new Error(
+            `Could not emit binary operator: ${JSON.stringify(operator)}`
+        );
 }
 
 function emitBinaryInstruction(binary: BinaryInstruction): string {
-    return `${emitBinaryOperator(binary.operator)} ${emitOperand(binary.src)}, ${emitOperand(binary.dst)}`;
+    return `${emitBinaryOperator(binary.operator)} ${emitOperand(
+        binary.src
+    )}, ${emitOperand(binary.dst)}`;
 }
 
 function emitAllocateStack(alloc: AllocateStack): string {
@@ -430,14 +518,22 @@ function emitCdq(): string {
 }
 
 function emitInstruction(instruction: Instruction): string {
-    if (instruction.kind === "Mov") return `movl ${emitOperand(instruction.src)}, ${emitOperand(instruction.dst)}`;
+    if (instruction.kind === "Mov")
+        return `movl ${emitOperand(instruction.src)}, ${emitOperand(
+            instruction.dst
+        )}`;
     else if (instruction.kind === "Ret") return emitRet();
     else if (instruction.kind === "Compare") return emitCompare(instruction);
-    else if (instruction.kind === "SetConditionCode") return emitSetConditionCode(instruction);
-    else if (instruction.kind === "AllocateStack") return emitAllocateStack(instruction);
-    else if (instruction.kind === "UnaryInstruction") return emitUnaryInstruction(instruction);
-    else if (instruction.kind === "BinaryInstruction") return emitBinaryInstruction(instruction);
-    else if (instruction.kind === "IDiv") return emitIDivInstruction(instruction);
+    else if (instruction.kind === "SetConditionCode")
+        return emitSetConditionCode(instruction);
+    else if (instruction.kind === "AllocateStack")
+        return emitAllocateStack(instruction);
+    else if (instruction.kind === "UnaryInstruction")
+        return emitUnaryInstruction(instruction);
+    else if (instruction.kind === "BinaryInstruction")
+        return emitBinaryInstruction(instruction);
+    else if (instruction.kind === "IDiv")
+        return emitIDivInstruction(instruction);
     else if (instruction.kind === "CDQ") return emitCdq();
     else throw new Error(`Could emit instruction: ${instruction}`);
 }
@@ -453,4 +549,3 @@ ${func.name.value}:
 export function emit(program: Program): string {
     return emitFunction(program.function_defintion);
 }
-

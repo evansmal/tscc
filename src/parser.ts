@@ -1,7 +1,7 @@
 import { Scanner, Token, TokenType, ToString } from "./lexer.js";
 
 export interface Program {
-    kind: "Program"
+    kind: "Program";
     functions: Function[];
 }
 
@@ -25,7 +25,11 @@ export interface Constant {
     value: number;
 }
 
-export type UnaryOperand = "Complement" | "Negate" | "LogicalNot" | "LogicalAnd";
+export type UnaryOperand =
+    | "Complement"
+    | "Negate"
+    | "LogicalNot"
+    | "LogicalAnd";
 
 export interface UnaryOperator {
     kind: "UnaryOperator";
@@ -45,7 +49,10 @@ export interface UnaryExpression {
     expression: Expression;
 }
 
-function UnaryExpression(operator: UnaryOperator, expression: Expression): UnaryExpression {
+function UnaryExpression(
+    operator: UnaryOperator,
+    expression: Expression
+): UnaryExpression {
     return {
         kind: "UnaryExpression",
         operator,
@@ -80,7 +87,11 @@ export interface BinaryExpression {
     right: Expression;
 }
 
-export function BinaryExpression(operator: BinaryOperator, left: Expression, right: Expression): BinaryExpression {
+export function BinaryExpression(
+    operator: BinaryOperator,
+    left: Expression,
+    right: Expression
+): BinaryExpression {
     return { kind: "BinaryExpression", operator, left, right };
 }
 
@@ -90,7 +101,8 @@ export type Statement = Return;
 
 function expect(token_type: TokenType, scanner: Scanner) {
     const token = scanner.next();
-    if (token.kind !== token_type) throw new Error(`Expected '${token_type}' but got '${token.kind}'`);
+    if (token.kind !== token_type)
+        throw new Error(`Expected '${token_type}' but got '${token.kind}'`);
     return token;
 }
 
@@ -142,11 +154,13 @@ function parseBinaryOperator(scanner: Scanner): BinaryOperator {
 }
 
 function isBinaryOperator(token: Token) {
-    return (token.kind === "plus"
-        || token.kind === "negation"
-        || token.kind === "asterisk"
-        || token.kind === "forward_slash"
-        || token.kind === "percent");
+    return (
+        token.kind === "plus" ||
+        token.kind === "negation" ||
+        token.kind === "asterisk" ||
+        token.kind === "forward_slash" ||
+        token.kind === "percent"
+    );
 }
 
 function getPrecedence(token: Token): number {
@@ -158,10 +172,16 @@ function getPrecedence(token: Token): number {
     else throw new Error(`Unknown precedence for token ${token.kind}`);
 }
 
-function parseExpression(scanner: Scanner, minimum_precedence: number): Expression {
+function parseExpression(
+    scanner: Scanner,
+    minimum_precedence: number
+): Expression {
     let left = parseFactor(scanner);
     let token = scanner.peek();
-    while (isBinaryOperator(token) && getPrecedence(token) >= minimum_precedence) {
+    while (
+        isBinaryOperator(token) &&
+        getPrecedence(token) >= minimum_precedence
+    ) {
         const operator = parseBinaryOperator(scanner);
         const right = parseExpression(scanner, getPrecedence(token) + 1);
         left = BinaryExpression(operator, left, right);
@@ -181,7 +201,10 @@ function parseStatement(scanner: Scanner): Statement {
 function parseFunctionDeclaration(scanner: Scanner): Function {
     const return_identifier = scanner.next();
     if (return_identifier.kind !== "identifier") {
-        throw new Error("Could not parse function return type identifier: " + ToString(return_identifier));
+        throw new Error(
+            "Could not parse function return type identifier: " +
+                ToString(return_identifier)
+        );
     }
     const function_name = scanner.next();
 
@@ -189,23 +212,60 @@ function parseFunctionDeclaration(scanner: Scanner): Function {
     expect("cparen", scanner);
 
     expect("obrace", scanner);
-    const body = parseStatement(scanner)
+    const body = parseStatement(scanner);
     expect("cbrace", scanner);
 
     return {
         kind: "Function",
         name: Identifier(function_name.value),
         body
-    }
+    };
+}
+
+function indent(block: string) {
+    const lines = block.trim().split("\n");
+    return lines
+        .map((x) => `    ${x}`)
+        .join("\n")
+        .trim();
+}
+
+function exprToString(expression: Expression): string {
+    let result = indent(`Expression:${expression.kind}\n`);
+    if (expression.kind === "Constant")
+        result += ` -> ${expression.value.toString()}`;
+    else if (expression.kind === "BinaryExpression")
+        result +=
+            "\n" +
+            [
+                `left: ${exprToString(expression.left)}`,
+                `right: ${exprToString(expression.right)}`
+            ]
+                .map(indent)
+                .join("\n");
+    else throw Error("Cannot convert Expression to string");
+    return result;
+}
+
+function statementToString(statement: Statement): string {
+    return `Statement:${statement.kind}\n${indent(
+        exprToString(statement.expr)
+    )}`;
 }
 
 export function toString(program: Program): string {
-    return JSON.stringify(program, null, 4);
+    return program.functions
+        .map(
+            (f) =>
+                `Function ${f.name.value}\n${indent(statementToString(f.body))}`
+        )
+        .map(indent)
+        .join("\n");
 }
 
 export function parse(scanner: Scanner): Program {
     return {
         kind: "Program",
         functions: [parseFunctionDeclaration(scanner)]
-    }
+    };
 }

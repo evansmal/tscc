@@ -1,7 +1,7 @@
 import * as Parser from "./parser.js";
 
 export interface Program {
-    kind: "Program"
+    kind: "Program";
     functions: Function[];
 }
 
@@ -25,7 +25,11 @@ export interface Return {
     value: Value;
 }
 
-export type UnaryOperator = "Complement" | "Negate" | "LogicalNot" | "LogicalAnd";
+export type UnaryOperator =
+    | "Complement"
+    | "Negate"
+    | "LogicalNot"
+    | "LogicalAnd";
 
 export interface UnaryInstruction {
     kind: "UnaryInstruction";
@@ -34,7 +38,11 @@ export interface UnaryInstruction {
     dst: Value;
 }
 
-function UnaryInstruction(operator: UnaryOperator, src: Value, dst: Value): UnaryInstruction {
+function UnaryInstruction(
+    operator: UnaryOperator,
+    src: Value,
+    dst: Value
+): UnaryInstruction {
     return { kind: "UnaryInstruction", operator, src, dst };
 }
 
@@ -48,7 +56,12 @@ export interface BinaryInstruction {
     dst: Value;
 }
 
-export function BinaryInstruction(operator: BinaryOperator, first: Value, second: Value, dst: Value): BinaryInstruction {
+export function BinaryInstruction(
+    operator: BinaryOperator,
+    first: Value,
+    second: Value,
+    dst: Value
+): BinaryInstruction {
     return { kind: "BinaryInstruction", operator, first, second, dst };
 }
 
@@ -74,19 +87,26 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
     return operator.operand;
 }
 
-function lowerExpression(expression: Parser.Expression, instructions: Instruction[], createVariable: () => Variable): Value {
+function lowerExpression(
+    expression: Parser.Expression,
+    instructions: Instruction[],
+    createVariable: () => Variable
+): Value {
     if (expression.kind === "Constant") {
         return { kind: "ConstantInteger", value: expression.value };
     } else if (expression.kind === "UnaryExpression") {
         const dst = createVariable();
         const unary = UnaryInstruction(
             lowerUnaryOperator(expression.operator),
-            lowerExpression(expression.expression, instructions, createVariable),
+            lowerExpression(
+                expression.expression,
+                instructions,
+                createVariable
+            ),
             dst
         );
         instructions.push(unary);
         return dst;
-
     } else if (expression.kind === "BinaryExpression") {
         const dst = createVariable();
         const binary = BinaryInstruction(
@@ -110,12 +130,16 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
         const variable: Variable = {
             kind: "Variable",
             identifier: Identifier(`tmp${id++}`)
-        }
+        };
         variables.push(variable);
         return variable;
     };
     if (statement.kind === "Return") {
-        const variable = lowerExpression(statement.expr, instructions, create_value);
+        const variable = lowerExpression(
+            statement.expr,
+            instructions,
+            create_value
+        );
         instructions.push({ kind: "Return", value: variable });
     } else {
         throw new Error("Could not lower AST statement into IR instruction");
