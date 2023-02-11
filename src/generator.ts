@@ -390,31 +390,32 @@ function fixInvalidCompareInstructions(func: Function) {
 
 function fixInvalidBinaryInstructions(func: Function) {
     func.instructions = func.instructions.flatMap((inst) => {
-        if (
-            inst.kind === "BinaryInstruction" &&
-            inst.src.kind === "Stack" &&
-            inst.dst.kind === "Stack"
-        ) {
-            const first = Mov(inst.src, Register("r10"));
-            const second = BinaryInstruction(
-                inst.operator,
-                Register("r10"),
-                inst.dst
-            );
-            return [first, second];
-        } else if (
-            inst.kind === "BinaryInstruction" &&
-            inst.operator.operand === "Multiply" &&
-            inst.dst.kind === "Stack"
-        ) {
-            return [
-                Mov(inst.dst, Register("r11")),
-                BinaryInstruction(inst.operator, inst.src, Register("r11")),
-                Mov(Register("r11"), inst.dst)
-            ];
-        } else {
-            return inst;
+        if (inst.kind === "BinaryInstruction") {
+            if (
+                inst.src.kind === "Stack" &&
+                inst.dst.kind === "Stack" &&
+                (inst.operator.operand === "Add" ||
+                    inst.operator.operand === "Subtract")
+            ) {
+                const first = Mov(inst.src, Register("r10"));
+                const second = BinaryInstruction(
+                    inst.operator,
+                    Register("r10"),
+                    inst.dst
+                );
+                return [first, second];
+            } else if (
+                inst.operator.operand === "Multiply" &&
+                inst.dst.kind === "Stack"
+            ) {
+                return [
+                    Mov(inst.dst, Register("r11")),
+                    BinaryInstruction(inst.operator, inst.src, Register("r11")),
+                    Mov(Register("r11"), inst.dst)
+                ];
+            }
         }
+        return inst;
     });
 }
 
@@ -452,23 +453,19 @@ function operandToString(operand: Operand): string {
     else if (operand.kind === "Stack") return `stack[${operand.address}]`;
     else throw new Error("Cannot convert operand to string");
 }
+
+function binaryOperatorToString(operator: BinaryOperator): string {
+    if (operator.operand === "Add") return "ADD";
+    else if (operator.operand === "Multiply") return "MUL";
+    else if (operator.operand === "Subtract") return "SUB";
+    else throw new Error("Cannot lower binary operator to string");
+}
+
 function binaryInstructionToString(instruction: BinaryInstruction) {
-    let output = "";
-    if (instruction.operator.operand === "Add") {
-        output += `ADD ${operandToString(instruction.src)}, ${operandToString(
-            instruction.dst
-        )}`;
-    } else if (instruction.operator.operand === "Multiply") {
-        output += `MUL ${operandToString(instruction.src)} ${operandToString(
-            instruction.dst
-        )}`;
-    } else if (instruction.operator.operand === "Subtract") {
-        output += `SUB ${operandToString(instruction.src)} ${operandToString(
-            instruction.dst
-        )}`;
-    } else {
-        throw new Error("Cannot lower binary operator to string");
-    }
+    let output = `${binaryOperatorToString(instruction.operator)}`;
+    output += ` ${operandToString(instruction.src)}, ${operandToString(
+        instruction.dst
+    )}`;
     return output;
 }
 

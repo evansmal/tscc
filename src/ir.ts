@@ -125,11 +125,11 @@ function lowerExpression(
 function lowerStatement(statement: Parser.Statement): Instruction[] {
     const instructions: Instruction[] = [];
     const variables: Variable[] = [];
+    let variable_start_id = 0;
     const create_value: () => Variable = () => {
-        let id = 0;
         const variable: Variable = {
             kind: "Variable",
-            identifier: Identifier(`tmp${id++}`)
+            identifier: Identifier(`tmp${variable_start_id++}`)
         };
         variables.push(variable);
         return variable;
