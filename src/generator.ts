@@ -192,7 +192,16 @@ function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
 }
 
 function lowerBinaryOperator(operator: IR.BinaryOperator): BinaryOperator {
-    if (operator !== "Divide" && operator !== "Mod")
+    if (
+        operator !== "Divide" &&
+        operator !== "Mod" &&
+        operator !== "Less" &&
+        operator !== "LessOrEqual" &&
+        operator !== "Greater" &&
+        operator !== "GreaterOrEqual" &&
+        operator !== "NotEqual" &&
+        operator !== "Equal"
+    )
         return BinaryOperator(operator);
     else throw new Error("Cannot lower IR.BinaryOperator");
 }
