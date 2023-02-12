@@ -218,9 +218,7 @@ function parseExpression(
         isTokenKindBinaryOperator(token.kind) &&
         getTokenPrecedence(token) >= minimum_precedence
     ) {
-        console.log("parsin binop");
         const operator = parseBinaryOperator(scanner);
-        console.log("op", operator);
         const right = parseExpression(scanner, getTokenPrecedence(token) + 1);
         left = BinaryExpression(operator, left, right);
         token = scanner.peek();
