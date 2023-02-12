@@ -69,7 +69,20 @@ export function Return(expr: Expression): Return {
     return { kind: "Return", expr };
 }
 
-export type BinaryOperand = "Add" | "Subtract" | "Multiply" | "Divide" | "Mod";
+export type BinaryOperand =
+    | "Add"
+    | "Subtract"
+    | "Multiply"
+    | "Divide"
+    | "Mod"
+    | "And"
+    | "Or"
+    | "Equal"
+    | "NotEqual"
+    | "Less"
+    | "LessOrEqual"
+    | "Greater"
+    | "GreaterOrEqual";
 
 export interface BinaryOperator {
     kind: "BinaryOperator";
@@ -131,6 +144,11 @@ function parseFactor(scanner: Scanner): Expression {
             UnaryOperator("LogicalAnd"),
             parseExpression(scanner, 0)
         );
+    } else if (token.kind === "logical_or") {
+        return UnaryExpression(
+            UnaryOperator("LogicalAnd"),
+            parseExpression(scanner, 0)
+        );
     } else if (token.kind === "oparen") {
         const expr = parseExpression(scanner, 0);
         expect("cparen", scanner);
@@ -147,26 +165,47 @@ function parseBinaryOperator(scanner: Scanner): BinaryOperator {
     else if (token.kind === "asterisk") return BinaryOperator("Multiply");
     else if (token.kind === "forward_slash") return BinaryOperator("Divide");
     else if (token.kind === "percent") return BinaryOperator("Mod");
+    else if (token.kind === "logical_or") return BinaryOperator("Or");
+    else if (token.kind === "logical_and") return BinaryOperator("And");
+    else if (token.kind === "equal_to") return BinaryOperator("Equal");
+    else if (token.kind === "not_equal_to") return BinaryOperator("NotEqual");
+    else if (token.kind === "less_than") return BinaryOperator("Less");
+    else if (token.kind === "less_than_or_equal")
+        return BinaryOperator("LessOrEqual");
+    else if (token.kind === "greater_than") return BinaryOperator("Greater");
+    else if (token.kind === "greater_than_or_equal")
+        return BinaryOperator("GreaterOrEqual");
     else throw new Error(`Could not parse binary operator '${token.kind}'`);
 }
 
-function isBinaryOperator(token: Token) {
-    return (
-        token.kind === "plus" ||
-        token.kind === "negation" ||
-        token.kind === "asterisk" ||
-        token.kind === "forward_slash" ||
-        token.kind === "percent"
-    );
+const BINOP_PRECEDENCE = {
+    plus: 45,
+    negation: 45,
+    asterisk: 50,
+    percent: 50,
+    forward_slash: 50,
+    less_than: 35,
+    less_than_or_equal: 35,
+    greater_than: 35,
+    greater_than_or_equal: 35,
+    equal_to: 30,
+    not_equal_to: 30,
+    logical_and: 10,
+    logical_or: 5
+} as const;
+
+type BinaryOperandTokenType = keyof typeof BINOP_PRECEDENCE;
+
+function isTokenKindBinaryOperator(
+    token_type: TokenType
+): token_type is BinaryOperandTokenType {
+    return Object.hasOwn(BINOP_PRECEDENCE, token_type);
 }
 
-function getPrecedence(token: Token): number {
-    if (token.kind === "plus") return 45;
-    else if (token.kind === "negation") return 45;
-    else if (token.kind === "asterisk") return 50;
-    else if (token.kind === "percent") return 50;
-    else if (token.kind === "forward_slash") return 50;
-    else throw new Error(`Unknown precedence for token ${token.kind}`);
+function getTokenPrecedence(token: Token): number {
+    if (isTokenKindBinaryOperator(token.kind)) {
+        return BINOP_PRECEDENCE[token.kind];
+    } else throw new Error(`Unknown precedence for token ${token}`);
 }
 
 function parseExpression(
@@ -176,11 +215,13 @@ function parseExpression(
     let left = parseFactor(scanner);
     let token = scanner.peek();
     while (
-        isBinaryOperator(token) &&
-        getPrecedence(token) >= minimum_precedence
+        isTokenKindBinaryOperator(token.kind) &&
+        getTokenPrecedence(token) >= minimum_precedence
     ) {
+        console.log("parsin binop");
         const operator = parseBinaryOperator(scanner);
-        const right = parseExpression(scanner, getPrecedence(token) + 1);
+        console.log("op", operator);
+        const right = parseExpression(scanner, getTokenPrecedence(token) + 1);
         left = BinaryExpression(operator, left, right);
         token = scanner.peek();
     }
@@ -225,10 +266,6 @@ function indent(block: string) {
         .map((x) => `    ${x}`)
         .join("\n")
         .trim();
-}
-
-function operatorToString(operator: BinaryOperator) {
-    return `${operator.operand}`;
 }
 
 function exprToString(expression: Expression): string {

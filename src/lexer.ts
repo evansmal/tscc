@@ -16,6 +16,13 @@ export type TokenType =
     | "negation"
     | "logical_not"
     | "logical_and"
+    | "logical_or"
+    | "equal_to"
+    | "not_equal_to"
+    | "less_than"
+    | "less_than_or_equal"
+    | "greater_than"
+    | "greater_than_or_equal"
     | "plus"
     | "asterisk"
     | "forward_slash"
@@ -51,12 +58,19 @@ function readToken(input: string, position: number): Token | undefined {
         ["semicolon", /^\;/],
         ["string", /^"(\\\\|\\"|[^"])*"/],
         ["logical_not", /^\!/],
-        ["logical_and", /^\&&/],
+        ["logical_and", /^\&\&/],
+        ["logical_or", /^\|\|/],
+        ["equal_to", /^\=\=/],
+        ["not_equal_to", /^\!\=/],
+        ["less_than_or_equal", /^\<\=/],
+        ["less_than", /^\</],
+        ["greater_than_or_equal", /^\>\=/],
+        ["greater_than", /^\>/],
         ["plus", /^\+/],
         ["asterisk", /^\*/],
         ["forward_slash", /^\//],
         ["percent", /^\//],
-        ["comment", /^\/\/.*/]
+        ["comment", /^\/\/.*/],
     ];
     for (let i = 0; i < patterns.length; i++) {
         const [kind, regex] = patterns[i];
