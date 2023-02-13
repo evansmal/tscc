@@ -1,6 +1,6 @@
 # tscc
 
-##### An almost [C](https://en.wikipedia.org/wiki/C_(programming_language)) compiler written in TypeScript.
+##### A toy [C](https://en.wikipedia.org/wiki/C_(programming_language)) compiler written in TypeScript.
 
 ![Build](https://github.com/evansmal/tscc/actions/workflows/main.yml/badge.svg)
 
@@ -33,7 +33,7 @@ Fow now, this project uses [this](https://github.com/nlsandler/write_a_c_compile
 yarn build && yarn test <stage>
 ```
 
-Where the stage is an integer value from 1 - 10. Currently, we pass test stages 0 - 2.
+Where the stage is an integer value from 1 - 10. Currently, we pass test stages 1 - 3.
 
 ## References
 

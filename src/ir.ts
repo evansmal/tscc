@@ -167,10 +167,7 @@ function lowerBinaryExpression(
 ): [Instruction[], Variable] {
     const instructions: Instruction[] = [];
     // Need to treat And/Or differently because they short circuit
-    if (
-        expression.operator.operand === "And" ||
-        expression.operator.operand === "Or"
-    ) {
+    if (expression.operator.operand === "And") {
         const false_label = Label(Identifier("is_false"));
         const v1 = lowerExpression(
             expression.left,
@@ -194,6 +191,34 @@ function lowerBinaryExpression(
                 Jump(end_label.identifier),
                 false_label,
                 Copy(ConstantInteger(0), result),
+                end_label
+            ]
+        );
+        return [instructions, result];
+    } else if (expression.operator.operand === "Or") {
+        const false_label = Label(Identifier("is_false"));
+        const v1 = lowerExpression(
+            expression.left,
+            instructions,
+            createVariable
+        );
+        instructions.push(JumpIfNotZero(v1, false_label.identifier));
+
+        const v2 = lowerExpression(
+            expression.right,
+            instructions,
+            createVariable
+        );
+        instructions.push(JumpIfNotZero(v2, false_label.identifier));
+
+        const result = createVariable();
+        const end_label = Label(Identifier("end"));
+        instructions.push(
+            ...[
+                Copy(ConstantInteger(0), result),
+                Jump(end_label.identifier),
+                false_label,
+                Copy(ConstantInteger(1), result),
                 end_label
             ]
         );
