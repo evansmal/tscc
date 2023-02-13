@@ -131,11 +131,16 @@ export type Instruction =
     | Copy
     | Jump
     | JumpIfZero
-    | JumpIfNotZero;
+    | JumpIfNotZero
+    | Label;
 
 export interface ConstantInteger {
     kind: "ConstantInteger";
     value: number;
+}
+
+export function ConstantInteger(value: number): Value {
+    return { kind: "ConstantInteger", value };
 }
 
 export interface Variable {
@@ -166,7 +171,33 @@ function lowerBinaryExpression(
         expression.operator.operand === "And" ||
         expression.operator.operand === "Or"
     ) {
-        return [[], createVariable()];
+        const false_label = Label(Identifier("is_false"));
+        const v1 = lowerExpression(
+            expression.left,
+            instructions,
+            createVariable
+        );
+        instructions.push(JumpIfZero(v1, false_label.identifier));
+
+        const v2 = lowerExpression(
+            expression.right,
+            instructions,
+            createVariable
+        );
+        instructions.push(JumpIfZero(v2, false_label.identifier));
+
+        const result = createVariable();
+        const end_label = Label(Identifier("end"));
+        instructions.push(
+            ...[
+                Copy(ConstantInteger(1), result),
+                Jump(end_label.identifier),
+                false_label,
+                Copy(ConstantInteger(0), result),
+                end_label
+            ]
+        );
+        return [instructions, result];
     } else {
         const dst = createVariable();
         const binary = BinaryInstruction(

@@ -48,6 +48,10 @@ interface PseudoRegister {
     identifier: Identifier;
 }
 
+function PseudoRegister(identifier: Identifier): PseudoRegister {
+    return { kind: "PseudoRegister", identifier };
+}
+
 interface Stack {
     kind: "Stack";
     address: number;
@@ -159,6 +163,10 @@ interface CDQ {
     kind: "CDQ";
 }
 
+function CDQ(): CDQ {
+    return { kind: "CDQ" };
+}
+
 interface IDiv {
     kind: "IDiv";
     operand: Operand;
@@ -168,8 +176,42 @@ function IDiv(operand: Operand): IDiv {
     return { kind: "IDiv", operand };
 }
 
-function CDQ(): CDQ {
-    return { kind: "CDQ" };
+interface Jmp {
+    kind: "Jmp";
+    identifier: Identifier;
+}
+
+function Jmp(identifier: Identifier): Jmp {
+    return { kind: "Jmp", identifier };
+}
+
+interface JmpCC {
+    kind: "JmpCC";
+    condition: ConditionCode;
+    identifier: Identifier;
+}
+
+function JmpCC(condition: ConditionCode, identifier: Identifier): JmpCC {
+    return { kind: "JmpCC", condition, identifier };
+}
+
+interface SetCC {
+    kind: "SetCC";
+    condition: ConditionCode;
+    operand: Operand;
+}
+
+function SetCC(condition: ConditionCode, operand: Operand): SetCC {
+    return { kind: "SetCC", condition, operand };
+}
+
+interface Label {
+    kind: "Label";
+    identifier: Identifier;
+}
+
+function Label(identifier: Identifier): Label {
+    return { kind: "Label", identifier };
 }
 
 type Instruction =
@@ -181,7 +223,11 @@ type Instruction =
     | AllocateStack
     | Ret
     | CDQ
-    | IDiv;
+    | IDiv
+    | Jmp
+    | JmpCC
+    | SetCC
+    | Label;
 
 function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
     if (operator === "Complement")
@@ -285,6 +331,28 @@ function lowerBinaryInstruction(
     }
 }
 
+function lowerJumpIfZero(instruction: IR.JumpIfZero): Instruction[] {
+    return [
+        Compare(Imm(0), lowerValue(instruction.condition)),
+        JmpCC("E", instruction.target)
+    ];
+}
+
+function lowerJumpIfNotZero(instruction: IR.JumpIfNotZero): Instruction[] {
+    return [
+        Compare(Imm(0), lowerValue(instruction.condition)),
+        JmpCC("NE", instruction.target)
+    ];
+}
+
+function lowerJump(instruction: IR.Jump): Instruction[] {
+    return [Jmp(instruction.target)];
+}
+
+function lowerLabel(instruction: IR.Label): Instruction[] {
+    return [Label(instruction.identifier)];
+}
+
 function lowerInstruction(instruction: IR.Instruction): Instruction[] {
     if (instruction.kind === "Return") {
         return [Mov(lowerValue(instruction.value), Register("ax")), Ret()];
@@ -292,8 +360,22 @@ function lowerInstruction(instruction: IR.Instruction): Instruction[] {
         return lowerUnaryInstruction(instruction);
     } else if (instruction.kind === "BinaryInstruction") {
         return lowerBinaryInstruction(instruction);
+    } else if (instruction.kind === "Jump") {
+        return lowerJump(instruction);
+    } else if (instruction.kind === "JumpIfZero") {
+        return lowerJumpIfZero(instruction);
+    } else if (instruction.kind === "JumpIfNotZero") {
+        return lowerJumpIfNotZero(instruction);
+    } else if (instruction.kind === "Copy") {
+        return [Mov(lowerValue(instruction.src), lowerValue(instruction.dst))];
+    } else if (instruction.kind === "Label") {
+        return lowerLabel(instruction);
     } else {
-        throw new Error(`Could not lower IR.Instruction type '${instruction}'`);
+        throw new Error(
+            `Could not lower IR.Instruction type '${JSON.stringify(
+                instruction
+            )}'`
+        );
     }
 }
 
@@ -343,15 +425,22 @@ function replacePseudoRegister(program: Program): number {
                 );
             } else if (inst.kind === "IDiv") {
                 return IDiv(replace(inst.operand));
+            } else if (inst.kind === "SetCC") {
+                return SetCC(inst.condition, replace(inst.operand));
             } else if (
                 inst.kind === "Ret" ||
                 inst.kind === "AllocateStack" ||
-                inst.kind === "CDQ"
+                inst.kind === "CDQ" ||
+                inst.kind === "Label" ||
+                inst.kind === "Jmp" ||
+                inst.kind === "JmpCC"
             )
                 return inst;
             else
                 throw new Error(
-                    `Unexpected instruction encountered when trying to replaced pseudoregisters`
+                    `Unexpected instruction encountered when trying to replaced pseudoregisters: ${JSON.stringify(
+                        inst
+                    )}`
                 );
         });
     return total_offset;
@@ -531,7 +620,7 @@ function emitOperand(operand: Operand): string {
     if (operand.kind === "Imm") return `$${operand.value}`;
     else if (operand.kind === "Register") return emitRegister(operand);
     else if (operand.kind === "Stack") return `${operand.address}(%rbp)`;
-    else throw new Error(`Could emit operand: ${JSON.stringify(operand)}`);
+    else throw new Error(`Cannot emit operand: ${JSON.stringify(operand)}`);
 }
 
 function emitRet(): string {
@@ -589,6 +678,22 @@ function emitCdq(): string {
     return `cdq`;
 }
 
+function emitJmp(jmp: Jmp): string {
+    return `jmp .${jmp.identifier.value}`;
+}
+
+function emitJmpCC(jmp: JmpCC): string {
+    return `j${jmp.condition.toLowerCase()} .${jmp.identifier.value}`;
+}
+
+function emitSetCC(set: SetCC): string {
+    return `set ${set.condition} ${emitOperand(set.operand)}`;
+}
+
+function emitLabel(label: Label): string {
+    return `\n.${label.identifier.value}\:`;
+}
+
 function emitInstruction(instruction: Instruction): string {
     if (instruction.kind === "Mov")
         return `movl ${emitOperand(instruction.src)}, ${emitOperand(
@@ -607,7 +712,14 @@ function emitInstruction(instruction: Instruction): string {
     else if (instruction.kind === "IDiv")
         return emitIDivInstruction(instruction);
     else if (instruction.kind === "CDQ") return emitCdq();
-    else throw new Error(`Could emit instruction: ${instruction}`);
+    else if (instruction.kind === "Jmp") return emitJmp(instruction);
+    else if (instruction.kind === "JmpCC") return emitJmpCC(instruction);
+    else if (instruction.kind === "SetCC") return emitSetCC(instruction);
+    else if (instruction.kind === "Label") return emitLabel(instruction);
+    else
+        throw new Error(
+            `Cannot emit instruction: ${JSON.stringify(instruction)}`
+        );
 }
 
 function emitFunction(func: Function): string {

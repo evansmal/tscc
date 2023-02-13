@@ -70,7 +70,7 @@ function readToken(input: string, position: number): Token | undefined {
         ["asterisk", /^\*/],
         ["forward_slash", /^\//],
         ["percent", /^\//],
-        ["comment", /^\/\/.*/],
+        ["comment", /^\/\/.*/]
     ];
     for (let i = 0; i < patterns.length; i++) {
         const [kind, regex] = patterns[i];
