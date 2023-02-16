@@ -163,28 +163,31 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
 
 function lowerBinaryExpression(
     expression: Parser.BinaryExpression,
-    createVariable: () => Variable
+    createVariable: () => Variable,
+    createLabel: (name: string) => Label
 ): [Instruction[], Variable] {
     const instructions: Instruction[] = [];
     // Need to treat And/Or differently because they short circuit
     if (expression.operator.operand === "And") {
-        const false_label = Label(Identifier("is_false"));
+        const false_label = createLabel("is_false");
         const v1 = lowerExpression(
             expression.left,
             instructions,
-            createVariable
+            createVariable,
+            createLabel
         );
         instructions.push(JumpIfZero(v1, false_label.identifier));
 
         const v2 = lowerExpression(
             expression.right,
             instructions,
-            createVariable
+            createVariable,
+            createLabel
         );
         instructions.push(JumpIfZero(v2, false_label.identifier));
 
         const result = createVariable();
-        const end_label = Label(Identifier("end"));
+        const end_label = createLabel("end");
         instructions.push(
             ...[
                 Copy(ConstantInteger(1), result),
@@ -196,23 +199,25 @@ function lowerBinaryExpression(
         );
         return [instructions, result];
     } else if (expression.operator.operand === "Or") {
-        const false_label = Label(Identifier("is_false"));
+        const false_label = createLabel("is_false");
         const v1 = lowerExpression(
             expression.left,
             instructions,
-            createVariable
+            createVariable,
+            createLabel
         );
         instructions.push(JumpIfNotZero(v1, false_label.identifier));
 
         const v2 = lowerExpression(
             expression.right,
             instructions,
-            createVariable
+            createVariable,
+            createLabel
         );
         instructions.push(JumpIfNotZero(v2, false_label.identifier));
 
         const result = createVariable();
-        const end_label = Label(Identifier("end"));
+        const end_label = createLabel("end");
         instructions.push(
             ...[
                 Copy(ConstantInteger(0), result),
@@ -227,8 +232,18 @@ function lowerBinaryExpression(
         const dst = createVariable();
         const binary = BinaryInstruction(
             lowerBinaryOperator(expression.operator),
-            lowerExpression(expression.left, instructions, createVariable),
-            lowerExpression(expression.right, instructions, createVariable),
+            lowerExpression(
+                expression.left,
+                instructions,
+                createVariable,
+                createLabel
+            ),
+            lowerExpression(
+                expression.right,
+                instructions,
+                createVariable,
+                createLabel
+            ),
             dst
         );
         instructions.push(binary);
@@ -239,7 +254,8 @@ function lowerBinaryExpression(
 function lowerExpression(
     expression: Parser.Expression,
     instructions: Instruction[],
-    createVariable: () => Variable
+    createVariable: () => Variable,
+    createLabel: (name: string) => Label
 ): Value {
     if (expression.kind === "Constant") {
         return { kind: "ConstantInteger", value: expression.value };
@@ -250,14 +266,19 @@ function lowerExpression(
             lowerExpression(
                 expression.expression,
                 instructions,
-                createVariable
+                createVariable,
+                createLabel
             ),
             dst
         );
         instructions.push(unary);
         return dst;
     } else if (expression.kind === "BinaryExpression") {
-        const [is, dst] = lowerBinaryExpression(expression, createVariable);
+        const [is, dst] = lowerBinaryExpression(
+            expression,
+            createVariable,
+            createLabel
+        );
         instructions.push(...is);
         return dst;
     } else {
@@ -277,11 +298,17 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
         variables.push(variable);
         return variable;
     };
+    let label_start_id = 0;
+    const create_label: (name: string) => Label = (name) => {
+        const fully_qualified_name = `${name}_${label_start_id++}`;
+        return Label(Identifier(fully_qualified_name));
+    };
     if (statement.kind === "Return") {
         const variable = lowerExpression(
             statement.expr,
             instructions,
-            create_value
+            create_value,
+            create_label
         );
         instructions.push({ kind: "Return", value: variable });
     } else {
