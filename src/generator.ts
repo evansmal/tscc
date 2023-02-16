@@ -296,6 +296,17 @@ function lowerUnaryInstruction(
     }
 }
 
+function lowerRelationalBinaryInstruction(
+    instruction: IR.BinaryInstruction,
+    condition: ConditionCode
+) {
+    return [
+        Compare(lowerValue(instruction.second), lowerValue(instruction.first)),
+        Mov(Imm(0), lowerValue(instruction.dst)),
+        SetCC(condition, lowerValue(instruction.dst))
+    ];
+}
+
 function lowerBinaryInstruction(
     instruction: IR.BinaryInstruction
 ): Instruction[] {
@@ -313,12 +324,18 @@ function lowerBinaryInstruction(
             IDiv(lowerValue(instruction.second)),
             Mov(Register("dx"), lowerValue(instruction.dst))
         ];
+    } else if (instruction.operator === "Equal") {
+        return lowerRelationalBinaryInstruction(instruction, "E");
+    } else if (instruction.operator === "NotEqual") {
+        return lowerRelationalBinaryInstruction(instruction, "NE");
     } else if (instruction.operator === "Less") {
-        return [
-            Compare(lowerValue(instruction.second), lowerValue(instruction.first)),
-            Mov(Imm(0), lowerValue(instruction.dst)),
-            SetCC("L", lowerValue(instruction.dst)),
-        ];
+        return lowerRelationalBinaryInstruction(instruction, "L");
+    } else if (instruction.operator === "LessOrEqual") {
+        return lowerRelationalBinaryInstruction(instruction, "LE");
+    } else if (instruction.operator === "Greater") {
+        return lowerRelationalBinaryInstruction(instruction, "G");
+    } else if (instruction.operator === "GreaterOrEqual") {
+        return lowerRelationalBinaryInstruction(instruction, "GE");
     } else if (
         instruction.operator === "Multiply" ||
         instruction.operator === "Subtract" ||
