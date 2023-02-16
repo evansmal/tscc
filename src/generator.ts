@@ -313,6 +313,12 @@ function lowerBinaryInstruction(
             IDiv(lowerValue(instruction.second)),
             Mov(Register("dx"), lowerValue(instruction.dst))
         ];
+    } else if (instruction.operator === "Less") {
+        return [
+            Compare(lowerValue(instruction.second), lowerValue(instruction.first)),
+            Mov(Imm(0), lowerValue(instruction.dst)),
+            SetCC("L", lowerValue(instruction.dst)),
+        ];
     } else if (
         instruction.operator === "Multiply" ||
         instruction.operator === "Subtract" ||
@@ -687,7 +693,7 @@ function emitJmpCC(jmp: JmpCC): string {
 }
 
 function emitSetCC(set: SetCC): string {
-    return `set ${set.condition} ${emitOperand(set.operand)}`;
+    return `set${set.condition.toLowerCase()} ${emitOperand(set.operand)}`;
 }
 
 function emitLabel(label: Label): string {
