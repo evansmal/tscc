@@ -28,6 +28,7 @@ export type TokenType =
     | "forward_slash"
     | "percent"
     | "comment"
+    | "assignment"
     | "eof";
 
 export interface Token {
@@ -70,7 +71,8 @@ function readToken(input: string, position: number): Token | undefined {
         ["asterisk", /^\*/],
         ["forward_slash", /^\//],
         ["percent", /^\//],
-        ["comment", /^\/\/.*/]
+        ["comment", /^\/\/.*/],
+        ["assignment", /^\=/]
     ];
     for (let i = 0; i < patterns.length; i++) {
         const [kind, regex] = patterns[i];

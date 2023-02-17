@@ -17,7 +17,7 @@ function Identifier(name: string): Identifier {
 export interface Function {
     kind: "Function";
     name: Identifier;
-    body: Statement;
+    body: Statement[];
 }
 
 export interface Constant {
@@ -110,7 +110,22 @@ export function BinaryExpression(
 
 export type Expression = Constant | UnaryExpression | BinaryExpression;
 
-export type Statement = Return;
+export interface VariableDeclaration {
+    kind: "VariableDeclaration";
+    type: Identifier;
+    identifier: Identifier;
+    literal: Expression;
+}
+
+function VariableDeclaration(
+    type: Identifier,
+    identifier: Identifier,
+    literal: Expression
+): VariableDeclaration {
+    return { kind: "VariableDeclaration", type, identifier, literal };
+}
+
+export type Statement = Return | VariableDeclaration;
 
 function expect(token_type: TokenType, scanner: Scanner) {
     const token = scanner.next();
@@ -227,11 +242,33 @@ function parseExpression(
 }
 
 function parseStatement(scanner: Scanner): Statement {
-    expect("return", scanner);
-    const expression = parseExpression(scanner, 0);
-    const statement = Return(expression);
-    expect("semicolon", scanner);
-    return statement;
+    const next = scanner.next();
+    if (next.kind === "return") {
+        const expression = parseExpression(scanner, 0);
+        const statement = Return(expression);
+        expect("semicolon", scanner);
+        return statement;
+    } else if (next.kind === "identifier") {
+        const variable_name = scanner.next();
+        expect("assignment", scanner);
+        const statement = VariableDeclaration(
+            Identifier("int"),
+            Identifier(variable_name.value),
+            parseExpression(scanner, 0)
+        );
+        expect("semicolon", scanner);
+        return statement;
+    } else {
+        throw new Error(`Unable to parse statement: ${JSON.stringify(next)}`);
+    }
+}
+
+function parseBasicBlock(scanner: Scanner): Statement[] {
+    const statements: Statement[] = [];
+    while (scanner.peek().kind !== "cbrace") {
+        statements.push(parseStatement(scanner));
+    }
+    return statements;
 }
 
 function parseFunctionDeclaration(scanner: Scanner): Function {
@@ -248,7 +285,7 @@ function parseFunctionDeclaration(scanner: Scanner): Function {
     expect("cparen", scanner);
 
     expect("obrace", scanner);
-    const body = parseStatement(scanner);
+    const body = parseBasicBlock(scanner);
     expect("cbrace", scanner);
 
     return {
@@ -294,16 +331,26 @@ function exprToString(expression: Expression): string {
 }
 
 function statementToString(statement: Statement): string {
-    return `Statement:${statement.kind}\n${indent(
-        exprToString(statement.expr)
-    )}`;
+    if (statement.kind === "Return") {
+        return `Statement:${statement.kind}\n${indent(
+            exprToString(statement.expr)
+        )}`;
+    } else if (statement.kind === "VariableDeclaration") {
+        return `Statement:${statement.kind}\n${indent(
+            exprToString(statement.literal)
+        )}`;
+    } else {
+        throw new Error("Unable to convert Statement to string");
+    }
 }
 
 export function toString(program: Program): string {
     return program.functions
         .map(
             (f) =>
-                `Function ${f.name.value}\n${indent(statementToString(f.body))}`
+                `Function ${f.name.value}\n${indent(
+                    f.body.map(statementToString).join("\n")
+                )}`
         )
         .map(indent)
         .join("\n");
