@@ -1,5 +1,7 @@
 import { Scanner, Token, TokenType, ToString } from "./lexer.js";
 
+import { inspect } from "node:util";
+
 export interface Program {
     kind: "Program";
     functions: Function[];
@@ -295,65 +297,8 @@ function parseFunctionDeclaration(scanner: Scanner): Function {
     };
 }
 
-function indent(block: string) {
-    const lines = block.trim().split("\n");
-    return lines
-        .map((x) => `    ${x}`)
-        .join("\n")
-        .trim();
-}
-
-function exprToString(expression: Expression): string {
-    let result = indent(`Expression:${expression.kind}\n`);
-    if (expression.kind === "Constant")
-        result += ` -> ${expression.value.toString()}`;
-    else if (expression.kind === "BinaryExpression")
-        result +=
-            "\n" +
-            [
-                `op: ${expression.operator.operand}`,
-                `left: ${exprToString(expression.left)}`,
-                `right: ${exprToString(expression.right)}`
-            ]
-                .map(indent)
-                .join("\n");
-    else if (expression.kind === "UnaryExpression") {
-        result +=
-            "\n" +
-            [
-                `op: ${expression.operator.operand}`,
-                `expr: ${indent(exprToString(expression.expression))}`
-            ]
-                .map(indent)
-                .join("\n");
-    } else throw Error("Cannot convert Expression to string");
-    return result;
-}
-
-function statementToString(statement: Statement): string {
-    if (statement.kind === "Return") {
-        return `Statement:${statement.kind}\n${indent(
-            exprToString(statement.expr)
-        )}`;
-    } else if (statement.kind === "VariableDeclaration") {
-        return `Statement:${statement.kind}\n${indent(
-            exprToString(statement.literal)
-        )}`;
-    } else {
-        throw new Error("Unable to convert Statement to string");
-    }
-}
-
 export function toString(program: Program): string {
-    return program.functions
-        .map(
-            (f) =>
-                `Function ${f.name.value}\n${indent(
-                    f.body.map(statementToString).join("\n")
-                )}`
-        )
-        .map(indent)
-        .join("\n");
+    return inspect(program, { depth: null, colors: true });
 }
 
 export function parse(scanner: Scanner): Program {
