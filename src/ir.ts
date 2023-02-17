@@ -1,5 +1,7 @@
 import * as Parser from "./parser.js";
 
+import { inspect } from "node:util";
+
 export interface Program {
     kind: "Program";
     functions: Function[];
@@ -146,6 +148,10 @@ export function ConstantInteger(value: number): Value {
 export interface Variable {
     kind: "Variable";
     identifier: Identifier;
+}
+
+function Variable(identifier: Identifier): Variable {
+    return { kind: "Variable", identifier };
 }
 
 export type Value = ConstantInteger | Variable;
@@ -311,8 +317,14 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
             create_label
         );
         instructions.push({ kind: "Return", value: variable });
+    } else if (statement.kind === "VariableDeclaration") {
+        throw new Error("VariableDeclaration is unsupport in IR");
     } else {
-        throw new Error("Could not lower AST statement into IR instruction");
+        throw new Error(
+            `Could not lower AST statement into IR instruction: ${inspect(
+                statement
+            )}`
+        );
     }
     return instructions;
 }
@@ -321,7 +333,7 @@ function lowerFunction(func: Parser.Function): Function {
     return {
         kind: "Function",
         name: func.name,
-        body: lowerStatement(func.body)
+        body: func.body.flatMap(lowerStatement)
     };
 }
 

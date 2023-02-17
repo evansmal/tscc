@@ -127,7 +127,7 @@ function VariableDeclaration(
     return { kind: "VariableDeclaration", type, identifier, literal };
 }
 
-export type Statement = Return | VariableDeclaration;
+export type Statement = Return | VariableDeclaration | Expression;
 
 function expect(token_type: TokenType, scanner: Scanner) {
     const token = scanner.next();
@@ -250,7 +250,7 @@ function parseStatement(scanner: Scanner): Statement {
         const statement = Return(expression);
         expect("semicolon", scanner);
         return statement;
-    } else if (next.kind === "identifier") {
+    } else if (next.kind === "identifier" && next.value === "int") {
         const variable_name = scanner.next();
         expect("assignment", scanner);
         const statement = VariableDeclaration(
