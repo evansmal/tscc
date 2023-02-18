@@ -273,6 +273,8 @@ function lowerExpression(
         const [is, dst] = lowerBinaryExpression(expression, scope);
         instructions.push(...is);
         return dst;
+    } else if (expression.kind === "VariableReference") {
+        return Variable(expression.identifier);
     } else {
         throw new Error(
             `Could not lower AST expression into IR instruction: ${inspect(
