@@ -110,7 +110,20 @@ export function BinaryExpression(
     return { kind: "BinaryExpression", operator, left, right };
 }
 
-export type Expression = Constant | UnaryExpression | BinaryExpression;
+export interface VariableReference {
+    kind: "VariableReference";
+    identifier: Identifier;
+}
+
+function VariableReference(identifier: Identifier): VariableReference {
+    return { kind: "VariableReference", identifier };
+}
+
+export type Expression =
+    | Constant
+    | UnaryExpression
+    | BinaryExpression
+    | VariableReference;
 
 export interface VariableDeclaration {
     kind: "VariableDeclaration";
@@ -170,6 +183,8 @@ function parseFactor(scanner: Scanner): Expression {
         const expr = parseExpression(scanner, 0);
         expect("cparen", scanner);
         return expr;
+    } else if (token.kind === "identifier") {
+        return VariableReference(Identifier(token.value));
     } else {
         throw new Error(`Could not parse expression '${token.kind}'`);
     }
