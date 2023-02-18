@@ -274,7 +274,11 @@ function lowerExpression(
         instructions.push(...is);
         return dst;
     } else {
-        throw new Error(`Could not lower AST expression into IR instruction`);
+        throw new Error(
+            `Could not lower AST expression into IR instruction: ${inspect(
+                expression
+            )}`
+        );
     }
 }
 
@@ -311,7 +315,7 @@ function lowerFunction(func: Parser.Function): Function {
 }
 
 export function toString(program: Program): string {
-    return JSON.stringify(program, null, 4);
+    return inspect(program);
 }
 
 export function lower(program: Parser.Program): Program {

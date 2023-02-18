@@ -1,5 +1,7 @@
 import * as IR from "./ir.js";
 
+import { inspect } from "node:util";
+
 interface Identifier {
     kind: "Identifier";
     value: string;
@@ -234,7 +236,10 @@ function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
         return { kind: "UnaryOperator", operator_type: "Not" };
     else if (operator === "Negate")
         return { kind: "UnaryOperator", operator_type: "Negate" };
-    else throw new Error(`Could not lower IR.UnaryOperator type '${operator}'`);
+    else
+        throw new Error(
+            `Could not lower IR.UnaryOperator type '${inspect(operator)}'`
+        );
 }
 
 function lowerBinaryOperator(operator: IR.BinaryOperator): BinaryOperator {
@@ -264,7 +269,7 @@ function lowerValue(value: IR.Value): Operand {
             identifier: value.identifier
         };
     } else {
-        throw new Error(`Could not lower IR.Value type '${value}'`);
+        throw new Error(`Could not lower IR.Value type '${inspect(value)}'`);
     }
 }
 
@@ -291,7 +296,7 @@ function lowerUnaryInstruction(
         ];
     } else {
         throw new Error(
-            `Could not lower IR.UnaryInstruction type '${instruction}'`
+            `Could not lower IR.UnaryInstruction type '${inspect(instruction)}'`
         );
     }
 }
@@ -350,7 +355,9 @@ function lowerBinaryInstruction(
             )
         ];
     } else {
-        throw new Error("Cannot lower IR.BinaryInstruction");
+        throw new Error(
+            `Cannot lower IR.BinaryInstruction: ${inspect(instruction)}`
+        );
     }
 }
 
@@ -395,9 +402,7 @@ function lowerInstruction(instruction: IR.Instruction): Instruction[] {
         return lowerLabel(instruction);
     } else {
         throw new Error(
-            `Could not lower IR.Instruction type '${JSON.stringify(
-                instruction
-            )}'`
+            `Could not lower IR.Instruction type '${inspect(instruction)}'`
         );
     }
 }
@@ -461,7 +466,7 @@ function replacePseudoRegister(program: Program): number {
                 return inst;
             else
                 throw new Error(
-                    `Unexpected instruction encountered when trying to replaced pseudoregisters: ${JSON.stringify(
+                    `Unexpected instruction encountered when trying to replaced pseudoregisters: ${inspect(
                         inst
                     )}`
                 );
@@ -636,14 +641,14 @@ function emitRegister(register: Register): string {
     if (register.name === "r10") return `%r10d`;
     else if (register.name === "ax") return `%eax`;
     else if (register.name === "r11") return `%r11d`;
-    else throw new Error(`Cannot emit register ${JSON.stringify(register)}`);
+    else throw new Error(`Cannot emit register ${inspect(register)}`);
 }
 
 function emitOperand(operand: Operand): string {
     if (operand.kind === "Imm") return `$${operand.value}`;
     else if (operand.kind === "Register") return emitRegister(operand);
     else if (operand.kind === "Stack") return `${operand.address}(%rbp)`;
-    else throw new Error(`Cannot emit operand: ${JSON.stringify(operand)}`);
+    else throw new Error(`Cannot emit operand: ${inspect(operand)}`);
 }
 
 function emitRet(): string {
@@ -678,9 +683,7 @@ function emitBinaryOperator(operator: BinaryOperator): string {
     else if (operator.operand === "Subtract") return `subl`;
     else if (operator.operand === "Multiply") return `imull`;
     else
-        throw new Error(
-            `Could not emit binary operator: ${JSON.stringify(operator)}`
-        );
+        throw new Error(`Could not emit binary operator: ${inspect(operator)}`);
 }
 
 function emitBinaryInstruction(binary: BinaryInstruction): string {
@@ -739,10 +742,7 @@ function emitInstruction(instruction: Instruction): string {
     else if (instruction.kind === "JmpCC") return emitJmpCC(instruction);
     else if (instruction.kind === "SetCC") return emitSetCC(instruction);
     else if (instruction.kind === "Label") return emitLabel(instruction);
-    else
-        throw new Error(
-            `Cannot emit instruction: ${JSON.stringify(instruction)}`
-        );
+    else throw new Error(`Cannot emit instruction: ${inspect(instruction)}`);
 }
 
 function emitFunction(func: Function): string {
