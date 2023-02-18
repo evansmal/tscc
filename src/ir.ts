@@ -172,6 +172,28 @@ interface Scope {
     createLabel: (name: string) => Label;
 }
 
+function createScope(): Scope {
+    let variable_start_id = 0;
+    const variables: Variable[] = [];
+    const createVariable = (name?: string) => {
+        const variable = Variable(
+            Identifier(name ? name : `tmp${variable_start_id++}`)
+        );
+        variables.push(variable);
+        return variable;
+    };
+    let label_start_id = 0;
+    const createLabel: (name: string) => Label = (name) => {
+        const fully_qualified_name = `${name}_${label_start_id++}`;
+        return Label(Identifier(fully_qualified_name));
+    };
+
+    return {
+        createVariable,
+        createLabel
+    };
+}
+
 function lowerBinaryExpression(
     expression: Parser.BinaryExpression,
     scope: Scope
@@ -254,29 +276,6 @@ function lowerExpression(
     } else {
         throw new Error(`Could not lower AST expression into IR instruction`);
     }
-}
-
-function createScope(): Scope {
-    let variable_start_id = 0;
-    const variables: Variable[] = [];
-    const createVariable = (name?: string) => {
-        const variable: Variable = {
-            kind: "Variable",
-            identifier: Identifier(name ? name : `tmp${variable_start_id++}`)
-        };
-        variables.push(variable);
-        return variable;
-    };
-    let label_start_id = 0;
-    const createLabel: (name: string) => Label = (name) => {
-        const fully_qualified_name = `${name}_${label_start_id++}`;
-        return Label(Identifier(fully_qualified_name));
-    };
-
-    return {
-        createVariable,
-        createLabel
-    };
 }
 
 function lowerStatement(statement: Parser.Statement): Instruction[] {
