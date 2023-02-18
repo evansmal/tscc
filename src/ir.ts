@@ -167,33 +167,27 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
     throw new Error("Cannot lower Parser.BinaryOperator.And/Or to IR");
 }
 
+interface Scope {
+    createVariable: (name?: string) => Variable;
+    createLabel: (name: string) => Label;
+}
+
 function lowerBinaryExpression(
     expression: Parser.BinaryExpression,
-    createVariable: () => Variable,
-    createLabel: (name: string) => Label
+    scope: Scope
 ): [Instruction[], Variable] {
     const instructions: Instruction[] = [];
     // Need to treat And/Or differently because they short circuit
     if (expression.operator.operand === "And") {
-        const false_label = createLabel("is_false");
-        const v1 = lowerExpression(
-            expression.left,
-            instructions,
-            createVariable,
-            createLabel
-        );
+        const false_label = scope.createLabel("is_false");
+        const v1 = lowerExpression(expression.left, instructions, scope);
         instructions.push(JumpIfZero(v1, false_label.identifier));
 
-        const v2 = lowerExpression(
-            expression.right,
-            instructions,
-            createVariable,
-            createLabel
-        );
+        const v2 = lowerExpression(expression.right, instructions, scope);
         instructions.push(JumpIfZero(v2, false_label.identifier));
 
-        const result = createVariable();
-        const end_label = createLabel("end");
+        const result = scope.createVariable();
+        const end_label = scope.createLabel("end");
         instructions.push(
             ...[
                 Copy(ConstantInteger(1), result),
@@ -205,25 +199,15 @@ function lowerBinaryExpression(
         );
         return [instructions, result];
     } else if (expression.operator.operand === "Or") {
-        const false_label = createLabel("is_false");
-        const v1 = lowerExpression(
-            expression.left,
-            instructions,
-            createVariable,
-            createLabel
-        );
+        const false_label = scope.createLabel("is_false");
+        const v1 = lowerExpression(expression.left, instructions, scope);
         instructions.push(JumpIfNotZero(v1, false_label.identifier));
 
-        const v2 = lowerExpression(
-            expression.right,
-            instructions,
-            createVariable,
-            createLabel
-        );
+        const v2 = lowerExpression(expression.right, instructions, scope);
         instructions.push(JumpIfNotZero(v2, false_label.identifier));
 
-        const result = createVariable();
-        const end_label = createLabel("end");
+        const result = scope.createVariable();
+        const end_label = scope.createLabel("end");
         instructions.push(
             ...[
                 Copy(ConstantInteger(0), result),
@@ -235,21 +219,11 @@ function lowerBinaryExpression(
         );
         return [instructions, result];
     } else {
-        const dst = createVariable();
+        const dst = scope.createVariable();
         const binary = BinaryInstruction(
             lowerBinaryOperator(expression.operator),
-            lowerExpression(
-                expression.left,
-                instructions,
-                createVariable,
-                createLabel
-            ),
-            lowerExpression(
-                expression.right,
-                instructions,
-                createVariable,
-                createLabel
-            ),
+            lowerExpression(expression.left, instructions, scope),
+            lowerExpression(expression.right, instructions, scope),
             dst
         );
         instructions.push(binary);
@@ -260,31 +234,21 @@ function lowerBinaryExpression(
 function lowerExpression(
     expression: Parser.Expression,
     instructions: Instruction[],
-    createVariable: () => Variable,
-    createLabel: (name: string) => Label
+    scope: Scope
 ): Value {
     if (expression.kind === "Constant") {
         return { kind: "ConstantInteger", value: expression.value };
     } else if (expression.kind === "UnaryExpression") {
-        const dst = createVariable();
+        const dst = scope.createVariable();
         const unary = UnaryInstruction(
             lowerUnaryOperator(expression.operator),
-            lowerExpression(
-                expression.expression,
-                instructions,
-                createVariable,
-                createLabel
-            ),
+            lowerExpression(expression.expression, instructions, scope),
             dst
         );
         instructions.push(unary);
         return dst;
     } else if (expression.kind === "BinaryExpression") {
-        const [is, dst] = lowerBinaryExpression(
-            expression,
-            createVariable,
-            createLabel
-        );
+        const [is, dst] = lowerBinaryExpression(expression, scope);
         instructions.push(...is);
         return dst;
     } else {
@@ -292,33 +256,43 @@ function lowerExpression(
     }
 }
 
-function lowerStatement(statement: Parser.Statement): Instruction[] {
-    const instructions: Instruction[] = [];
-    const variables: Variable[] = [];
+function createScope(): Scope {
     let variable_start_id = 0;
-    const create_value: () => Variable = () => {
+    const variables: Variable[] = [];
+    const createVariable = (name?: string) => {
         const variable: Variable = {
             kind: "Variable",
-            identifier: Identifier(`tmp${variable_start_id++}`)
+            identifier: Identifier(name ? name : `tmp${variable_start_id++}`)
         };
         variables.push(variable);
         return variable;
     };
     let label_start_id = 0;
-    const create_label: (name: string) => Label = (name) => {
+    const createLabel: (name: string) => Label = (name) => {
         const fully_qualified_name = `${name}_${label_start_id++}`;
         return Label(Identifier(fully_qualified_name));
     };
+
+    return {
+        createVariable,
+        createLabel
+    };
+}
+
+function lowerStatement(statement: Parser.Statement): Instruction[] {
+    const instructions: Instruction[] = [];
+    const scope = createScope();
     if (statement.kind === "Return") {
-        const variable = lowerExpression(
-            statement.expr,
-            instructions,
-            create_value,
-            create_label
-        );
+        const variable = lowerExpression(statement.expr, instructions, scope);
         instructions.push({ kind: "Return", value: variable });
     } else if (statement.kind === "VariableDeclaration") {
-        throw new Error("VariableDeclaration is unsupport in IR");
+        const variable = scope.createVariable(statement.identifier.value);
+        return [
+            Copy(
+                lowerExpression(statement.literal, instructions, scope),
+                variable
+            )
+        ];
     } else {
         throw new Error(
             `Could not lower AST statement into IR instruction: ${inspect(
