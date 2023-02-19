@@ -258,7 +258,7 @@ function parseExpression(
     return left;
 }
 
-function parseStatement(scanner: Scanner): Statement {
+export function parseStatement(scanner: Scanner): Statement {
     const next = scanner.peek();
     if (next.kind === "return") {
         expect("return", scanner);

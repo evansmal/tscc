@@ -8,9 +8,18 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout repository and submodules
+        uses: actions/checkout@v2
+        with:
+          submodules: recursive
       - name: Build
         run: |
-         yarn install &&
-         yarn build &&
-         yarn test:unit
+          yarn install &&
+          yarn build
+      - name: Test
+        run: |
+          yarn test:unit &&
+          yarn test 1 &&
+          yarn test 2 &&
+          yarn test 3 &&
+          yarn test 4
