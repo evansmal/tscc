@@ -6,12 +6,13 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc",
+        "test:unit": "node --test build",
         "test": "./test/run_tests.sh",
         "format": "prettier -w src/*.ts",
         "clean": "rm -rf build"
     },
     "dependencies": {
-        "@types/node": "^17.0.23",
+        "@types/node": "^18.14.0",
         "typescript": "^4.9.5"
     },
     "devDependencies": {
