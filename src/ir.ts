@@ -292,14 +292,16 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
         instructions.push({ kind: "Return", value: variable });
     } else if (statement.kind === "VariableDeclaration") {
         const variable = scope.createVariable(statement.identifier.value);
-        instructions.push(
-            ...[
-                Copy(
-                    lowerExpression(statement.literal, instructions, scope),
-                    variable
-                )
-            ]
-        );
+        if (statement.value) {
+            instructions.push(
+                ...[
+                    Copy(
+                        lowerExpression(statement.value, instructions, scope),
+                        variable
+                    )
+                ]
+            );
+        }
     } else if (
         statement.kind === "Constant" ||
         statement.kind === "UnaryExpression" ||

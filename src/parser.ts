@@ -129,15 +129,15 @@ export interface VariableDeclaration {
     kind: "VariableDeclaration";
     type: Identifier;
     identifier: Identifier;
-    literal: Expression;
+    value?: Expression;
 }
 
 function VariableDeclaration(
     type: Identifier,
     identifier: Identifier,
-    literal: Expression
+    value?: Expression
 ): VariableDeclaration {
-    return { kind: "VariableDeclaration", type, identifier, literal };
+    return { kind: "VariableDeclaration", type, identifier, value: value };
 }
 
 export type Statement = Return | VariableDeclaration | Expression;
@@ -269,14 +269,22 @@ function parseStatement(scanner: Scanner): Statement {
     } else if (next.kind === "identifier" && next.value === "int") {
         expect("identifier", scanner);
         const variable_name = scanner.next();
-        expect("assignment", scanner);
-        const statement = VariableDeclaration(
-            Identifier("int"),
-            Identifier(variable_name.value),
-            parseExpression(scanner, 0)
-        );
-        expect("semicolon", scanner);
-        return statement;
+        if (scanner.peek().kind === "assignment") {
+            expect("assignment", scanner);
+            const statement = VariableDeclaration(
+                Identifier("int"),
+                Identifier(variable_name.value),
+                parseExpression(scanner, 0)
+            );
+            expect("semicolon", scanner);
+            return statement;
+        } else {
+            expect("semicolon", scanner);
+            return VariableDeclaration(
+                Identifier("int"),
+                Identifier(variable_name.value)
+            );
+        }
     } else if (next.kind === "int") {
         const expression = parseExpression(scanner, 0);
         expect("semicolon", scanner);
