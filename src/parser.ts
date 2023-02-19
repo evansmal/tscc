@@ -259,13 +259,15 @@ function parseExpression(
 }
 
 function parseStatement(scanner: Scanner): Statement {
-    const next = scanner.next();
+    const next = scanner.peek();
     if (next.kind === "return") {
+        expect("return", scanner);
         const expression = parseExpression(scanner, 0);
         const statement = Return(expression);
         expect("semicolon", scanner);
         return statement;
     } else if (next.kind === "identifier" && next.value === "int") {
+        expect("identifier", scanner);
         const variable_name = scanner.next();
         expect("assignment", scanner);
         const statement = VariableDeclaration(
@@ -275,6 +277,10 @@ function parseStatement(scanner: Scanner): Statement {
         );
         expect("semicolon", scanner);
         return statement;
+    } else if (next.kind === "int") {
+        const expression = parseExpression(scanner, 0);
+        expect("semicolon", scanner);
+        return expression;
     } else {
         throw new Error(`Unable to parse statement: ${JSON.stringify(next)}`);
     }

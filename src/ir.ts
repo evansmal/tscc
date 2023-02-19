@@ -292,12 +292,21 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
         instructions.push({ kind: "Return", value: variable });
     } else if (statement.kind === "VariableDeclaration") {
         const variable = scope.createVariable(statement.identifier.value);
-        return [
-            Copy(
-                lowerExpression(statement.literal, instructions, scope),
-                variable
-            )
-        ];
+        instructions.push(
+            ...[
+                Copy(
+                    lowerExpression(statement.literal, instructions, scope),
+                    variable
+                )
+            ]
+        );
+    } else if (
+        statement.kind === "Constant" ||
+        statement.kind === "UnaryExpression" ||
+        statement.kind === "BinaryExpression" ||
+        statement.kind === "VariableReference"
+    ) {
+        lowerExpression(statement, instructions, scope);
     } else {
         throw new Error(
             `Could not lower AST statement into IR instruction: ${inspect(
@@ -317,7 +326,7 @@ function lowerFunction(func: Parser.Function): Function {
 }
 
 export function toString(program: Program): string {
-    return inspect(program);
+    return inspect(program, { depth: null });
 }
 
 export function lower(program: Parser.Program): Program {
