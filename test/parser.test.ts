@@ -1,5 +1,5 @@
-import { parseStatement } from "./parser.js";
-import { lex, getScanner } from "./lexer.js";
+import { parseStatement } from "@src/parser.js";
+import { lex, getScanner } from "@src/lexer.js";
 
 import test from "node:test";
 import assert from "node:assert";
