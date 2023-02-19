@@ -1,7 +1,7 @@
 {
     "name": "tscc",
     "version": "1.0.0",
-    "type": "commonjs",
+    "type": "module",
     "main": "index.js",
     "license": "MIT",
     "scripts": {

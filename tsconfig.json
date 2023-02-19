@@ -12,9 +12,9 @@
         "declaration": true,
         "skipLibCheck": true,
         "sourceMap": true,
-        "module": "CommonJS",
+        "module": "NodeNext",
         "target": "ESNext",
-        "moduleResolution": "node",
+        "moduleResolution": "nodenext",
         "outDir": "build"
     }
 }
