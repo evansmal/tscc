@@ -15,10 +15,6 @@
         "module": "NodeNext",
         "target": "ESNext",
         "moduleResolution": "nodenext",
-        "outDir": "build",
-        "baseUrl": ".",
-        "paths": {
-            "@src/*": ["src/*"]
-        }
+        "outDir": "build"
     }
 }

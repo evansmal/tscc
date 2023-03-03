@@ -119,11 +119,25 @@ function VariableReference(identifier: Identifier): VariableReference {
     return { kind: "VariableReference", identifier };
 }
 
+interface VariableAssignment {
+    kind: "VariableAssignment";
+    src: Expression;
+    dst: VariableReference;
+}
+
+function VariableAssignment(
+    src: Expression,
+    dst: VariableReference
+): VariableAssignment {
+    return { kind: "VariableAssignment", src, dst };
+}
+
 export type Expression =
     | Constant
     | UnaryExpression
     | BinaryExpression
-    | VariableReference;
+    | VariableReference
+    | VariableAssignment;
 
 export interface VariableDeclaration {
     kind: "VariableDeclaration";
@@ -152,7 +166,9 @@ function expect(token_type: TokenType, scanner: Scanner) {
 // TODO: refactor unary ops using peek()
 function parseFactor(scanner: Scanner): Expression {
     const token = scanner.next();
-    if (token.kind === "int") {
+    if (token.kind === "identifier") {
+        return VariableReference(Identifier(token.value));
+    } else if (token.kind === "int") {
         return {
             kind: "Constant",
             value: parseInt(token.value)
@@ -183,8 +199,6 @@ function parseFactor(scanner: Scanner): Expression {
         const expr = parseExpression(scanner, 0);
         expect("cparen", scanner);
         return expr;
-    } else if (token.kind === "identifier") {
-        return VariableReference(Identifier(token.value));
     } else {
         throw new Error(`Could not parse expression '${token.kind}'`);
     }
@@ -240,29 +254,38 @@ function getTokenPrecedence(token: Token): number {
     } else throw new Error(`Unknown precedence for token ${token}`);
 }
 
-function parseExpression(
+export function parseExpression(
     scanner: Scanner,
-    minimum_precedence: number
+    minimum_precedence: number = 0
 ): Expression {
     let left = parseFactor(scanner);
     let token = scanner.peek();
-    while (
-        isTokenKindBinaryOperator(token.kind) &&
-        getTokenPrecedence(token) >= minimum_precedence
-    ) {
-        const operator = parseBinaryOperator(scanner);
-        const right = parseExpression(scanner, getTokenPrecedence(token) + 1);
-        left = BinaryExpression(operator, left, right);
-        token = scanner.peek();
+    if (token.kind === "assignment") {
+        if (left.kind !== "VariableReference") throw new Error("UNEXP");
+        expect("assignment", scanner);
+        return VariableAssignment(parseExpression(scanner), left);
+    } else {
+        while (
+            isTokenKindBinaryOperator(token.kind) &&
+            getTokenPrecedence(token) >= minimum_precedence
+        ) {
+            const operator = parseBinaryOperator(scanner);
+            const right = parseExpression(
+                scanner,
+                getTokenPrecedence(token) + 1
+            );
+            left = BinaryExpression(operator, left, right);
+            token = scanner.peek();
+        }
+        return left;
     }
-    return left;
 }
 
 export function parseStatement(scanner: Scanner): Statement {
     const next = scanner.peek();
     if (next.kind === "return") {
         expect("return", scanner);
-        const expression = parseExpression(scanner, 0);
+        const expression = parseExpression(scanner);
         const statement = Return(expression);
         expect("semicolon", scanner);
         return statement;
@@ -274,7 +297,7 @@ export function parseStatement(scanner: Scanner): Statement {
             const statement = VariableDeclaration(
                 Identifier("int"),
                 Identifier(variable_name.value),
-                parseExpression(scanner, 0)
+                parseExpression(scanner)
             );
             expect("semicolon", scanner);
             return statement;
@@ -286,7 +309,7 @@ export function parseStatement(scanner: Scanner): Statement {
             );
         }
     } else if (next.kind === "int") {
-        const expression = parseExpression(scanner, 0);
+        const expression = parseExpression(scanner);
         expect("semicolon", scanner);
         return expression;
     } else {
