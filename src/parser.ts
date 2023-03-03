@@ -1,10 +1,23 @@
 import { Scanner, Token, TokenType, ToString } from "./lexer.js";
+import { Result, Ok, Err } from "./common.js";
 
 import { inspect } from "node:util";
+
+interface ParseError {
+    message: string;
+}
+
+function ParseError(message: string): ParseError {
+    return { message };
+}
 
 export interface Program {
     kind: "Program";
     functions: Function[];
+}
+
+export function Program(functions: Function[]): Program {
+    return { kind: "Program", functions };
 }
 
 export interface Identifier {
@@ -20,6 +33,10 @@ export interface Function {
     kind: "Function";
     name: Identifier;
     body: Statement[];
+}
+
+export function Function(name: Identifier, body: Statement[]): Function {
+    return { kind: "Function", name, body };
 }
 
 export interface Constant {
@@ -326,12 +343,17 @@ function parseBasicBlock(scanner: Scanner): Statement[] {
     return statements;
 }
 
-function parseFunctionDeclaration(scanner: Scanner): Function {
+function parseFunctionDeclaration(
+    scanner: Scanner
+): Result<Function, ParseError> {
     const return_identifier = scanner.next();
+
     if (return_identifier.kind !== "identifier") {
-        throw new Error(
-            "Could not parse function return type identifier: " +
-                ToString(return_identifier)
+        return Err(
+            ParseError(
+                "Could not parse function return type identifier: " +
+                    ToString(return_identifier)
+            )
         );
     }
     const function_name = scanner.next();
@@ -343,20 +365,15 @@ function parseFunctionDeclaration(scanner: Scanner): Function {
     const body = parseBasicBlock(scanner);
     expect("cbrace", scanner);
 
-    return {
-        kind: "Function",
-        name: Identifier(function_name.value),
-        body
-    };
+    return Ok(Function(Identifier(function_name.value), body));
 }
 
 export function toString(program: Program): string {
     return inspect(program, { depth: null, colors: true });
 }
 
-export function parse(scanner: Scanner): Program {
-    return {
-        kind: "Program",
-        functions: [parseFunctionDeclaration(scanner)]
-    };
+export function parse(scanner: Scanner): Result<Program, ParseError> {
+    return parseFunctionDeclaration(scanner).map((f) => {
+        return Program([f]);
+    });
 }

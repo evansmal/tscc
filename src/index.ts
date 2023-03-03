@@ -32,7 +32,7 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
         const tokens = Lexer.lex(input);
         if (opts.show_lexer) console.log(tokens);
 
-        const ast = Parser.parse(Lexer.getScanner(tokens));
+        const ast = Parser.parse(Lexer.getScanner(tokens)).unwrap();
         if (opts.show_ast) console.log(Parser.toString(ast));
 
         const ir = IR.lower(ast);
