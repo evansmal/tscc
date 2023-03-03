@@ -262,6 +262,7 @@ export function parseExpression(
     let left = parseFactor(scanner);
     let token = scanner.peek();
     if (token.kind === "assignment") {
+        // Parse: <id> = <expr>
         if (left.kind !== "VariableReference") throw new Error("UNEXP");
         expect("assignment", scanner);
         return VariableAssignment(parseExpression(scanner), left);
@@ -281,12 +282,14 @@ export function parseExpression(
 export function parseStatement(scanner: Scanner): Statement {
     const next = scanner.peek();
     if (next.kind === "return") {
+        // Parse: return <expr> ;
         expect("return", scanner);
         const expression = parseExpression(scanner);
         const statement = Return(expression);
         expect("semicolon", scanner);
         return statement;
     } else if (next.kind === "identifier" && next.value === "int") {
+        // Parse: int <id> [ = <expr>] ;
         expect("identifier", scanner);
         const variable_name = scanner.next();
         if (scanner.peek().kind === "assignment") {
@@ -305,7 +308,8 @@ export function parseStatement(scanner: Scanner): Statement {
                 Identifier(variable_name.value)
             );
         }
-    } else if (next.kind === "int") {
+    } else if (next.kind === "identifier") {
+        // Parse: <expr> ;
         const expression = parseExpression(scanner);
         expect("semicolon", scanner);
         return expression;
