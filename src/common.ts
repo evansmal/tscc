@@ -40,11 +40,31 @@ export class ResultType<T, E> {
         return this.expect("Failed to unwrap Result");
     }
 
+    expectErr(this: Result<T, E>, msg: string): E {
+        if (this[T]) {
+            throw new Error(msg);
+        } else {
+            return this[Value] as E;
+        }
+    }
+
+    unwrapErr(this: Result<T, E>): E {
+        return this.expectErr("Failed to unwrap Result");
+    }
+
     map<U>(this: Result<T, E>, f: (val: T) => U): Result<U, E> {
         return new ResultType(
             this[T] ? f(this[Value] as T) : (this[Value] as E),
             this[T]
         ) as Result<U, E>;
+    }
+
+    andThen<U>(this: Result<T, E>, f: (val: T) => Result<U, E>): Result<U, E> {
+        return this[T] ? f(this[Value] as T) : (this as any);
+    }
+
+    unwrapOrPanic(this: Result<T, E>, f: (err: E) => never): T {
+        return this.isOk() ? this.unwrap() : f(this.unwrapErr());
     }
 }
 

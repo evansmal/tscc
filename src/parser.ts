@@ -1,14 +1,19 @@
-import { Scanner, Token, TokenType, ToString } from "./lexer.js";
+import { Scanner, Token, TokenType } from "./lexer.js";
 import { Result, Ok, Err } from "./common.js";
 
 import { inspect } from "node:util";
 
 interface ParseError {
     message: string;
+    position: number;
+    toString: () => string;
 }
 
-function ParseError(message: string): ParseError {
-    return { message };
+function ParseError(message: string, position: number = 0): ParseError {
+    const toString = () => {
+        return `Parsing failed at (${position}): ${message}`;
+    };
+    return { message, position, toString };
 }
 
 export interface Program {
@@ -173,11 +178,20 @@ function VariableDeclaration(
 
 export type Statement = Return | VariableDeclaration | Expression;
 
-function expect(token_type: TokenType, scanner: Scanner) {
+function expect(
+    token_type: TokenType,
+    scanner: Scanner
+): Result<Token, ParseError> {
     const token = scanner.next();
-    if (token.kind !== token_type)
-        throw new Error(`Expected '${token_type}' but got '${token.kind}'`);
-    return token;
+    if (token.kind !== token_type) {
+        return Err(
+            ParseError(
+                `Expected '${token_type}' but got '${token.value}' which is of type '${token.kind}'`,
+                token.position
+            )
+        );
+    }
+    return Ok(token);
 }
 
 // TODO: refactor unary ops using peek()
@@ -335,37 +349,41 @@ export function parseStatement(scanner: Scanner): Statement {
     }
 }
 
-function parseBasicBlock(scanner: Scanner): Statement[] {
+function parseBasicBlock(scanner: Scanner): Result<Statement[], ParseError> {
     const statements: Statement[] = [];
     while (scanner.peek().kind !== "cbrace") {
         statements.push(parseStatement(scanner));
     }
-    return statements;
+    return Ok(statements);
 }
 
 function parseFunctionDeclaration(
     scanner: Scanner
 ): Result<Function, ParseError> {
     const return_identifier = scanner.next();
-
     if (return_identifier.kind !== "identifier") {
         return Err(
             ParseError(
-                "Could not parse function return type identifier: " +
-                    ToString(return_identifier)
+                `Expected function return type but got '${return_identifier.value}'`,
+                return_identifier.position
             )
         );
     }
-    const function_name = scanner.next();
+    const function_name = expect("identifier", scanner);
+    if (function_name.isErr()) return function_name;
 
-    expect("oparen", scanner);
-    expect("cparen", scanner);
+    const body = expect("oparen", scanner)
+        .andThen((_) => expect("cparen", scanner))
+        .andThen((_) => expect("obrace", scanner))
+        .andThen((_) => parseBasicBlock(scanner));
 
-    expect("obrace", scanner);
-    const body = parseBasicBlock(scanner);
-    expect("cbrace", scanner);
+    if (body.isErr()) return body;
 
-    return Ok(Function(Identifier(function_name.value), body));
+    const fn = Function(
+        Identifier(function_name.unwrap().value),
+        body.unwrap()
+    );
+    return expect("cbrace", scanner).andThen((_) => Ok(fn));
 }
 
 export function toString(program: Program): string {

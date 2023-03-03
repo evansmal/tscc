@@ -24,6 +24,8 @@ interface Options {
     show_output: boolean;
 }
 
+const PARSE_ERR_CODE = 0x02;
+
 function run(input_filepath: string, output_filepath: string, opts: Options) {
     const input = readFileSync(input_filepath).toString().trim();
     if (opts.show_input) console.log(input);
@@ -32,7 +34,12 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
         const tokens = Lexer.lex(input);
         if (opts.show_lexer) console.log(tokens);
 
-        const ast = Parser.parse(Lexer.getScanner(tokens)).unwrap();
+        const ast = Parser.parse(Lexer.getScanner(tokens)).unwrapOrPanic(
+            (err) => {
+                console.log(err.toString());
+                process.exit(PARSE_ERR_CODE);
+            }
+        );
         if (opts.show_ast) console.log(Parser.toString(ast));
 
         const ir = IR.lower(ast);
