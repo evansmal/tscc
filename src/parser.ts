@@ -16,6 +16,8 @@ function ParseError(message: string, position: number = 0): ParseError {
     return { message, position, toString };
 }
 
+export type ParseResult<T> = Result<T, ParseError>;
+
 export interface Program {
     kind: "Program";
     functions: Function[];
@@ -178,10 +180,7 @@ function VariableDeclaration(
 
 export type Statement = Return | VariableDeclaration | Expression;
 
-function expect(
-    token_type: TokenType,
-    scanner: Scanner
-): Result<Token, ParseError> {
+function expect(token_type: TokenType, scanner: Scanner): ParseResult<Token> {
     const token = scanner.next();
     if (token.kind !== token_type) {
         return Err(
@@ -349,7 +348,7 @@ export function parseStatement(scanner: Scanner): Statement {
     }
 }
 
-function parseBasicBlock(scanner: Scanner): Result<Statement[], ParseError> {
+function parseBasicBlock(scanner: Scanner): ParseResult<Statement[]> {
     const statements: Statement[] = [];
     while (scanner.peek().kind !== "cbrace") {
         statements.push(parseStatement(scanner));
@@ -357,9 +356,7 @@ function parseBasicBlock(scanner: Scanner): Result<Statement[], ParseError> {
     return Ok(statements);
 }
 
-function parseFunctionDeclaration(
-    scanner: Scanner
-): Result<Function, ParseError> {
+function parseFunctionDeclaration(scanner: Scanner): ParseResult<Function> {
     const return_identifier = scanner.next();
     if (return_identifier.kind !== "identifier") {
         return Err(
@@ -390,7 +387,7 @@ export function toString(program: Program): string {
     return inspect(program, { depth: null, colors: true });
 }
 
-export function parse(scanner: Scanner): Result<Program, ParseError> {
+export function parse(scanner: Scanner): ParseResult<Program> {
     return parseFunctionDeclaration(scanner).map((f) => {
         return Program([f]);
     });
