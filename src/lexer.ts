@@ -1,3 +1,5 @@
+import { Result, Ok, Err } from "./common.js";
+
 export type TokenType =
     | "identifier"
     | "return"
@@ -41,7 +43,7 @@ export function ToString(token: Token): string {
     return `${token.kind} [${token.value}@${token.position}]`;
 }
 
-function readToken(input: string, position: number): Token | undefined {
+function readToken(input: string, position: number): Result<Token, string> {
     const patterns: [TokenType, RegExp][] = [
         ["return", /^(return)\w*/],
         ["identifier", /^[a-zA-Z_]\w*/],
@@ -79,9 +81,10 @@ function readToken(input: string, position: number): Token | undefined {
         const result = input.slice(position).match(regex);
         if (result !== null) {
             const text = result[0];
-            return { kind, value: text, position };
+            return Ok({ kind, value: text, position });
         }
     }
+    return Err("Did not match token");
 }
 
 export function lex(input: string): Token[] {
@@ -89,10 +92,11 @@ export function lex(input: string): Token[] {
     let pos = 0;
     while (pos < input.length) {
         const token = readToken(input, pos);
-        if (token) {
-            tokens.push(token);
-            pos += token.value.length;
+        if (token.isOk()) {
+            tokens.push(token.unwrap());
+            pos += token.unwrap().value.length;
         } else {
+            // We didn't match anything so just skip ahead
             pos += 1;
         }
     }
