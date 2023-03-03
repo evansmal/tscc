@@ -258,27 +258,24 @@ export function parseExpression(
     scanner: Scanner,
     minimum_precedence: number = 0
 ): Expression {
+    // Handle assignments otherwise we should precedence climb
     let left = parseFactor(scanner);
     let token = scanner.peek();
     if (token.kind === "assignment") {
         if (left.kind !== "VariableReference") throw new Error("UNEXP");
         expect("assignment", scanner);
         return VariableAssignment(parseExpression(scanner), left);
-    } else {
-        while (
-            isTokenKindBinaryOperator(token.kind) &&
-            getTokenPrecedence(token) >= minimum_precedence
-        ) {
-            const operator = parseBinaryOperator(scanner);
-            const right = parseExpression(
-                scanner,
-                getTokenPrecedence(token) + 1
-            );
-            left = BinaryExpression(operator, left, right);
-            token = scanner.peek();
-        }
-        return left;
     }
+    while (
+        isTokenKindBinaryOperator(token.kind) &&
+        getTokenPrecedence(token) >= minimum_precedence
+    ) {
+        const operator = parseBinaryOperator(scanner);
+        const right = parseExpression(scanner, getTokenPrecedence(token) + 1);
+        left = BinaryExpression(operator, left, right);
+        token = scanner.peek();
+    }
+    return left;
 }
 
 export function parseStatement(scanner: Scanner): Statement {

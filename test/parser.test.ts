@@ -25,7 +25,19 @@ testConstantDeclaration(["a_b_c_d_e", 999]);
 test("Parse assignment expression", () => {
     const expression = parseExpression(getScanner(lex("x = 4")));
     assert(expression.kind === "VariableAssignment");
+    assert(expression.dst.identifier.value === "x");
+
     assert(expression.src.kind === "Constant");
     assert(expression.src.value === 4);
-    assert(expression.dst.identifier.value === "x");
+});
+
+test("Parse assignment expression", () => {
+    const expression = parseExpression(getScanner(lex("y = x = 5")));
+    assert(expression.kind === "VariableAssignment");
+    assert(expression.dst.identifier.value === "y");
+
+    assert(expression.src.kind === "VariableAssignment");
+    assert(expression.src.src.kind === "Constant");
+    assert(expression.src.src.value === 5);
+    assert(expression.src.dst.identifier.value === "x");
 });
