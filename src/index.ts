@@ -4,6 +4,7 @@ import { execSync } from "child_process";
 
 import * as Lexer from "./lexer.js";
 import * as Parser from "./parser.js";
+import * as Evaluator from "./evaluator.js";
 import * as IR from "./ir.js";
 import * as Generator from "./generator.js";
 
@@ -19,6 +20,7 @@ interface Options {
     show_input: boolean;
     show_lexer: boolean;
     show_ast: boolean;
+    evaluate_ast: boolean;
     show_ir: boolean;
     show_asm: boolean;
     show_output: boolean;
@@ -41,6 +43,8 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
             }
         );
         if (opts.show_ast) console.log(Parser.toString(ast));
+
+        if (opts.evaluate_ast) Evaluator.walk(ast);
 
         const ir = IR.lower(ast);
         if (opts.show_ir) console.log(IR.toString(ir));
@@ -73,24 +77,27 @@ function main() {
         );
         process.exit(0);
     }
-    const input_filepath = argv[2];
+    let input_filepath = "";
     const options: Options = {
         show_input: false,
         show_lexer: false,
         show_ast: false,
+        evaluate_ast: false,
         show_ir: false,
         show_asm: false,
         show_output: false
     };
-    const output_filepath = input_filepath.replace(/\.[^/.]+$/, "");
-    for (let i = 3; i < argv.length; i++) {
+    for (let i = 2; i < argv.length; i++) {
         if (argv[i] === "--input") options.show_input = true;
         else if (argv[i] === "--lex") options.show_lexer = true;
         else if (argv[i] === "--ast") options.show_ast = true;
+        else if (argv[i] === "--eval") options.evaluate_ast = true;
         else if (argv[i] === "--ir") options.show_ir = true;
         else if (argv[i] === "--asm") options.show_asm = true;
         else if (argv[i] === "--out") options.show_output = true;
+        else input_filepath = argv[i];
     }
+    const output_filepath = input_filepath.replace(/\.[^/.]+$/, "");
     run(input_filepath, output_filepath, options);
 }
 
