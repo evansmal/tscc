@@ -44,7 +44,7 @@ function run(input_filepath: string, output_filepath: string, opts: Options) {
         );
         if (opts.show_ast) console.log(Parser.toString(ast));
 
-        if (opts.evaluate_ast) Evaluator.walk(ast);
+        if (opts.evaluate_ast) process.exit(Evaluator.walk(ast));
 
         const ir = IR.lower(ast);
         if (opts.show_ir) console.log(IR.toString(ir));

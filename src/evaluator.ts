@@ -56,12 +56,12 @@ function walkExpression(expression: Parser.Expression): Value {
     } else throw new Error("Unsupported expression type");
 }
 
-export function walk(program: Parser.Program): void {
+export function walk(program: Parser.Program): number {
+    let return_value = 0;
     program.functions.forEach((fn) => {
         fn.body.forEach((statement) => {
             if (statement.kind === "Return") {
-                const ret = walkExpression(statement.expr);
-                process.exit(Number(ret));
+                return_value = Number(walkExpression(statement.expr));
             } else if (statement.kind === "VariableDeclaration") {
                 environment[statement.identifier.value] = statement.value
                     ? walkExpression(statement.value)
@@ -71,4 +71,5 @@ export function walk(program: Parser.Program): void {
             }
         });
     });
+    return return_value;
 }
