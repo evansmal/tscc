@@ -338,7 +338,7 @@ export function parseStatement(scanner: Scanner): Statement {
                 Identifier(variable_name.value)
             );
         }
-    } else if (next.kind === "identifier") {
+    } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
         const expression = parseExpression(scanner);
         expect("semicolon", scanner);
