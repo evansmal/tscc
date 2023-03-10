@@ -33,7 +33,7 @@ Fow now, this project uses [this](https://github.com/nlsandler/write_a_c_compile
 yarn build && yarn test <stage>
 ```
 
-Where the stage is an integer value from 1 - 10. Currently, we pass test stages 1 - 3.
+Where the stage is an integer value from 1 - 10. Currently, we pass test stages 1 - 5.
 
 ## References
 
