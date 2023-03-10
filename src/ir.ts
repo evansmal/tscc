@@ -169,6 +169,7 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
 
 interface Scope {
     createVariable: (name?: string) => Variable;
+    getVariable: (name: string) => Variable;
     createLabel: (name: string) => Label;
 }
 
@@ -182,6 +183,14 @@ function createScope(): Scope {
         variables.push(variable);
         return variable;
     };
+
+    const getVariable = (name: string) => {
+        for (let v of variables) {
+            if (v.identifier.value === name) return v;
+        }
+        throw new Error(`Cannot find variable name ${name}`);
+    };
+
     let label_start_id = 0;
     const createLabel: (name: string) => Label = (name) => {
         const fully_qualified_name = `${name}_${label_start_id++}`;
@@ -190,6 +199,7 @@ function createScope(): Scope {
 
     return {
         createVariable,
+        getVariable,
         createLabel
     };
 }
@@ -275,6 +285,17 @@ function lowerExpression(
         return dst;
     } else if (expression.kind === "VariableReference") {
         return Variable(expression.identifier);
+    } else if (expression.kind === "VariableAssignment") {
+        const variable = scope.getVariable(expression.dst.identifier.value);
+        instructions.push(
+            ...[
+                Copy(
+                    lowerExpression(expression.src, instructions, scope),
+                    variable
+                )
+            ]
+        );
+        return variable;
     } else {
         throw new Error(
             `Could not lower AST expression into IR instruction: ${inspect(
@@ -284,9 +305,11 @@ function lowerExpression(
     }
 }
 
-function lowerStatement(statement: Parser.Statement): Instruction[] {
+function lowerStatement(
+    statement: Parser.Statement,
+    scope: Scope
+): Instruction[] {
     const instructions: Instruction[] = [];
-    const scope = createScope();
     if (statement.kind === "Return") {
         const variable = lowerExpression(statement.expr, instructions, scope);
         instructions.push({ kind: "Return", value: variable });
@@ -306,6 +329,7 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
         statement.kind === "Constant" ||
         statement.kind === "UnaryExpression" ||
         statement.kind === "BinaryExpression" ||
+        statement.kind === "VariableAssignment" ||
         statement.kind === "VariableReference"
     ) {
         lowerExpression(statement, instructions, scope);
@@ -320,10 +344,11 @@ function lowerStatement(statement: Parser.Statement): Instruction[] {
 }
 
 function lowerFunction(func: Parser.Function): Function {
+    const scope = createScope();
     return {
         kind: "Function",
         name: func.name,
-        body: func.body.flatMap(lowerStatement)
+        body: func.body.flatMap((statement) => lowerStatement(statement, scope))
     };
 }
 
