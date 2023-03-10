@@ -44,13 +44,20 @@ function walkBinaryExpression(expression: Parser.BinaryExpression): Value {
     }
 }
 
-function walkExpression(expression: Parser.Expression): Value {
+export function walkExpression(expression: Parser.Expression): Value {
     if (expression.kind === "Constant") {
         return expression.value;
     } else if (expression.kind === "UnaryExpression") {
         return walkUnaryExpression(expression);
     } else if (expression.kind === "BinaryExpression") {
         return Number(walkBinaryExpression(expression));
+    } else if (
+        expression.kind === "VariableAssignment" &&
+        expression.dst.kind === "VariableReference"
+    ) {
+        const value = Number(walkExpression(expression.src));
+        environment[expression.dst.identifier.value] = value;
+        return value;
     } else if (expression.kind === "VariableReference") {
         const id = environment[expression.identifier.value];
         if (!id) {
