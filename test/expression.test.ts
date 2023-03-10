@@ -18,3 +18,26 @@ const testAssignmentToConstantExpression = (params: [string, number]) => {
 };
 testAssignmentToConstantExpression(["x", 0]);
 testAssignmentToConstantExpression(["___x", 123456789]);
+
+const testBinaryOperationExpression = (
+    left: number,
+    op: string,
+    right: number
+) => {
+    test(`Parse assignment expression '${left} ${op} ${right}'`, () => {
+        const expression = parseExpression(
+            getScanner(lex(`${left} ${op} ${right}`))
+        );
+        assert(expression.kind === "BinaryExpression");
+
+        assert(expression.left.kind === "Constant");
+        assert(expression.left.value === left);
+
+        assert(expression.right.kind === "Constant");
+        assert(expression.right.value === right);
+    });
+};
+testBinaryOperationExpression(4, "+", 2);
+testBinaryOperationExpression(10, "-", 8);
+testBinaryOperationExpression(2, "/", 3);
+testBinaryOperationExpression(11, "*", 1);
