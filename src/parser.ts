@@ -167,7 +167,7 @@ export interface VariableDeclaration {
     kind: "VariableDeclaration";
     type: Identifier;
     identifier: Identifier;
-    value?: Expression;
+    value: Expression | undefined;
 }
 
 function VariableDeclaration(

@@ -8,7 +8,7 @@
         "build": "tsc",
         "test:unit": "node --test-reporter spec --test build",
         "test": "./test/run_tests.sh",
-        "format": "prettier -w src/*.ts test/*.ts package.json",
+        "format": "prettier -w src/*.ts test/*.ts *.json",
         "clean": "rm -rf build"
     },
     "dependencies": {

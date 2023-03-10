@@ -52,7 +52,11 @@ function walkExpression(expression: Parser.Expression): Value {
     } else if (expression.kind === "BinaryExpression") {
         return Number(walkBinaryExpression(expression));
     } else if (expression.kind === "VariableReference") {
-        return environment[expression.identifier.value];
+        const id = environment[expression.identifier.value];
+        if (!id) {
+            throw new Error("Cannot find identifier");
+        }
+        return id;
     } else throw new Error("Unsupported expression type");
 }
 
