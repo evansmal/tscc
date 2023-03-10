@@ -1,6 +1,9 @@
 import * as Parser from "./parser.js";
+import { Result, Ok, Err } from "./common.js";
 
 import { inspect } from "node:util";
+
+export type SemaError<T> = Result<T, string>;
 
 export interface Program {
     kind: "Program";
@@ -169,7 +172,7 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
 
 interface Scope {
     createVariable: (name?: string) => Variable;
-    getVariable: (name: string) => Variable;
+    getVariable: (name: string) => SemaError<Variable>;
     createLabel: (name: string) => Label;
 }
 
@@ -177,6 +180,14 @@ function createScope(): Scope {
     let variable_start_id = 0;
     const variables: Variable[] = [];
     const createVariable = (name?: string) => {
+        // Check if a variable already exists
+        if (
+            name &&
+            variables.filter((v) => v.identifier.value === name).length > 0
+        ) {
+            throw new Error("Cannot redeclare a variable");
+        }
+
         const variable = Variable(
             Identifier(name ? name : `tmp${variable_start_id++}`)
         );
@@ -186,9 +197,9 @@ function createScope(): Scope {
 
     const getVariable = (name: string) => {
         for (let v of variables) {
-            if (v.identifier.value === name) return v;
+            if (v.identifier.value === name) return Ok(v);
         }
-        throw new Error(`Cannot find variable name ${name}`);
+        return Err(`Cannot find variable name ${name}`);
     };
 
     let label_start_id = 0;
@@ -284,18 +295,24 @@ function lowerExpression(
         instructions.push(...is);
         return dst;
     } else if (expression.kind === "VariableReference") {
+        if (scope.getVariable(expression.identifier.value).isErr()) {
+            throw new Error(
+                "Variable '${expression.identifier.value}' does not exist"
+            );
+        }
         return Variable(expression.identifier);
     } else if (expression.kind === "VariableAssignment") {
         const variable = scope.getVariable(expression.dst.identifier.value);
+        if (variable.isErr()) throw new Error(variable.unwrapErr());
         instructions.push(
             ...[
                 Copy(
                     lowerExpression(expression.src, instructions, scope),
-                    variable
+                    variable.unwrap()
                 )
             ]
         );
-        return variable;
+        return variable.unwrap();
     } else {
         throw new Error(
             `Could not lower AST expression into IR instruction: ${inspect(
