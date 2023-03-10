@@ -178,7 +178,17 @@ function VariableDeclaration(
     return { kind: "VariableDeclaration", type, identifier, value: value };
 }
 
-export type Statement = Return | VariableDeclaration | Expression;
+export interface IfStatement {
+    kind: "IfStatement";
+    condition: Expression;
+    body: Statement[];
+}
+
+function IfStatement(condition: Expression, body: Statement[]): IfStatement {
+    return { kind: "IfStatement", condition, body };
+}
+
+export type Statement = Return | VariableDeclaration | Expression | IfStatement;
 
 function expect(token_type: TokenType, scanner: Scanner): ParseResult<Token> {
     const token = scanner.next();
@@ -338,6 +348,17 @@ export function parseStatement(scanner: Scanner): Statement {
                 Identifier(variable_name.value)
             );
         }
+    } else if (next.kind === "if") {
+        // Parse: <expr> ;
+        expect("if", scanner);
+        expect("oparen", scanner);
+        const expression = parseExpression(scanner, 0);
+        expect("cparen", scanner);
+        expect("obracket", scanner);
+        const body = parseBasicBlock(scanner);
+        expect("cbracket", scanner);
+        if (body.isErr()) throw new Error(body.unwrapErr().toString());
+        return IfStatement(expression, body.unwrap());
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
         const expression = parseExpression(scanner);

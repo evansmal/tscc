@@ -77,6 +77,8 @@ export function walk(program: Parser.Program): number {
                 environment[statement.identifier.value] = statement.value
                     ? walkExpression(statement.value)
                     : 0;
+            } else if (statement.kind === "IfStatement") {
+                throw new Error("IfStatement is unsupported");
             } else {
                 const _ = walkExpression(statement);
             }
