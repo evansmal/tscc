@@ -73,3 +73,20 @@ parserTest("Parse if statement", "if(1) { return 1; }", (scanner) => {
     assert(conditional.body.length === 1);
     assert(conditional.body[0].kind === "Return");
 });
+
+parserTest("Parse if statement", "if(1 == 1) { x + y; }", (scanner) => {
+    const conditional = parseStatement(scanner);
+    assert(conditional.kind === "IfStatement");
+
+    assert(conditional.condition.kind === "BinaryExpression");
+    assert(conditional.condition.operator.operand === "Equal");
+    assert(conditional.condition.left.kind === "Constant");
+    assert(conditional.condition.left.value === 1);
+    assert(conditional.condition.right.kind === "Constant");
+    assert(conditional.condition.right.value === 1);
+
+    assert(conditional.body.length === 1);
+    assert(conditional.body[0].kind === "BinaryExpression");
+    assert(conditional.body[0].left.kind === "VariableReference");
+    assert(conditional.body[0].right.kind === "VariableReference");
+});
