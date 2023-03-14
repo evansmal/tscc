@@ -316,7 +316,8 @@ function lowerExpression(
     } else {
         throw new Error(
             `Could not lower AST expression into IR instruction: ${inspect(
-                expression
+                expression,
+                { depth: 0, colors: true }
             )}`
         );
     }
@@ -342,6 +343,17 @@ function lowerStatement(
                 ]
             );
         }
+    } else if (statement.kind === "IfStatement") {
+        const cond = lowerExpression(statement.condition, instructions, scope);
+        const false_label = scope.createLabel("is_false");
+        instructions.push(JumpIfZero(cond, false_label.identifier));
+        instructions.push(
+            JumpIfZero(cond, false_label.identifier),
+            ...statement.body.flatMap((statement) =>
+                lowerStatement(statement, scope)
+            ),
+            false_label
+        );
     } else if (
         statement.kind === "Constant" ||
         statement.kind === "UnaryExpression" ||
@@ -353,7 +365,8 @@ function lowerStatement(
     } else {
         throw new Error(
             `Could not lower AST statement into IR instruction: ${inspect(
-                statement
+                statement,
+                { depth: null, colors: true }
             )}`
         );
     }
