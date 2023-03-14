@@ -349,16 +349,23 @@ export function parseStatement(scanner: Scanner): Statement {
             );
         }
     } else if (next.kind === "if") {
-        // Parse: <expr> ;
+        // Parse: if(<expr>) { [statement] } ;
         expect("if", scanner);
         expect("oparen", scanner);
         const expression = parseExpression(scanner, 0);
         expect("cparen", scanner);
-        expect("obracket", scanner);
-        const body = parseBasicBlock(scanner);
-        expect("cbracket", scanner);
-        if (body.isErr()) throw new Error(body.unwrapErr().toString());
-        return IfStatement(expression, body.unwrap());
+
+        // Parse: statement ; | { [statement] } ;
+        const next = scanner.peek();
+        if (next.kind === "obrace") {
+            expect("obrace", scanner);
+            const body = parseBasicBlock(scanner);
+            expect("cbrace", scanner);
+            if (body.isErr()) throw new Error(body.unwrapErr().toString());
+            return IfStatement(expression, body.unwrap());
+        } else {
+            return IfStatement(expression, [parseStatement(scanner)]);
+        }
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
         const expression = parseExpression(scanner);
