@@ -1,50 +1,75 @@
 import { parseStatement } from "../src/parser.js";
-import { lex, getScanner } from "../src/lexer.js";
+import { lex, getScanner, Scanner } from "../src/lexer.js";
 
 import test from "node:test";
 import assert from "node:assert";
 
+export function parserTest(
+    desc: string,
+    code: string,
+    fn: (scanner: Scanner) => void
+) {
+    test(`${desc}: '${code}'`, () => {
+        const scanner = getScanner(lex(code));
+        fn(scanner);
+    });
+}
+
 const testVariableDefinitionStatementWithConstant = (
     params: [string, number]
 ) => {
-    test(`Parse variable definition 'int ${params[0]} = ${params[1]};'`, () => {
-        const statement = parseStatement(
-            getScanner(lex(`int ${params[0]} = ${params[1]};`))
-        );
-        assert(statement.kind === "VariableDeclaration");
-        assert(statement.identifier.value === params[0]);
-        assert(statement.value);
-        assert(
-            statement.value.kind === "Constant" &&
-                statement.value.value === params[1]
-        );
-    });
+    parserTest(
+        `Parse variable definition`,
+        `int ${params[0]} = ${params[1]};`,
+        (scanner) => {
+            const statement = parseStatement(scanner);
+            assert(statement.kind === "VariableDeclaration");
+            assert(statement.identifier.value === params[0]);
+            assert(statement.value);
+            assert(
+                statement.value.kind === "Constant" &&
+                    statement.value.value === params[1]
+            );
+        }
+    );
 };
 testVariableDefinitionStatementWithConstant(["a", 0]);
 testVariableDefinitionStatementWithConstant(["helloworld", 123456789]);
 testVariableDefinitionStatementWithConstant(["a_b_c_d_e", 999]);
 
 const testVariableDeclarationStatement = (params: [string, string]) => {
-    test(`Parse variable declaration '${params[0]} ${params[1]};'`, () => {
-        const statement = parseStatement(
-            getScanner(lex(`${params[0]} ${params[1]};`))
-        );
-        assert(statement.kind === "VariableDeclaration");
-        assert(statement.type.value === params[0]);
-        assert(!statement.value);
-    });
+    parserTest(
+        `Parse variable declaration`,
+        `${params[0]} ${params[1]};`,
+        (scanner) => {
+            const statement = parseStatement(scanner);
+            assert(statement.kind === "VariableDeclaration");
+            assert(statement.type.value === params[0]);
+            assert(!statement.value);
+        }
+    );
 };
 testVariableDeclarationStatement(["int", "a"]);
 testVariableDeclarationStatement(["int", "y"]);
 testVariableDeclarationStatement(["int", "a_b_c_d_e"]);
 
-test("Parse variable assignment statement 'y = x = 5'", () => {
-    const expression = parseStatement(getScanner(lex("y = x = 5;")));
-    assert(expression.kind === "VariableAssignment");
-    assert(expression.dst.identifier.value === "y");
+parserTest("Parse variable assignment statement", "y = x = 5;", (scanner) => {
+    const statement = parseStatement(scanner);
+    assert(statement.kind === "VariableAssignment");
+    assert(statement.dst.identifier.value === "y");
 
-    assert(expression.src.kind === "VariableAssignment");
-    assert(expression.src.src.kind === "Constant");
-    assert(expression.src.src.value === 5);
-    assert(expression.src.dst.identifier.value === "x");
+    assert(statement.src.kind === "VariableAssignment");
+    assert(statement.src.src.kind === "Constant");
+    assert(statement.src.src.value === 5);
+    assert(statement.src.dst.identifier.value === "x");
+});
+
+parserTest("Parse if statement", "if(1) { return 1; }", (scanner) => {
+    const conditional = parseStatement(scanner);
+    assert(conditional.kind === "IfStatement");
+    assert(conditional.condition.kind === "Constant");
+    assert(conditional.condition.value === 1);
+
+    assert(conditional.body.length === 1);
+    assert(conditional.body[0].kind === "Return");
 });
