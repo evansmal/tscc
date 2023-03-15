@@ -750,7 +750,9 @@ function emitFunction(func: Function): string {
 ${func.name.value}:
 \tpushq %rbp
 \tmovq %rsp, %rbp
-\t${func.instructions.map(emitInstruction).join("\n\t")}`;
+\t${func.instructions.map(emitInstruction).join("\n\t")}
+\t${emitInstruction(Mov(Imm(0), Register("ax")))}
+\t${emitRet()}`;
 }
 
 export function emit(program: Program): string {
