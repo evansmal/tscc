@@ -105,3 +105,27 @@ parserTest("Parse if statement", "if(2 + 3) return 0;", (scanner) => {
     assert(conditional.body.length === 1);
     assert(conditional.body[0].kind === "Return");
 });
+
+parserTest("Parse if else statement", "if(1) a = 1; else a = 2;", (scanner) => {
+    const conditional = parseStatement(scanner);
+    assert(conditional.kind === "IfStatement");
+
+    assert(conditional.body.length === 1);
+
+    assert(conditional.else_body);
+    assert(conditional.else_body.length === 1);
+});
+
+parserTest(
+    "Parse if else statement blocks",
+    "if(1) {a = 1;} else {a = 2;}",
+    (scanner) => {
+        const conditional = parseStatement(scanner);
+        assert(conditional.kind === "IfStatement");
+
+        assert(conditional.body.length === 1);
+
+        assert(conditional.else_body);
+        assert(conditional.else_body.length === 1);
+    }
+);

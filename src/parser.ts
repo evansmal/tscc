@@ -182,10 +182,15 @@ export interface IfStatement {
     kind: "IfStatement";
     condition: Expression;
     body: Statement[];
+    else_body?: Statement[] | undefined;
 }
 
-function IfStatement(condition: Expression, body: Statement[]): IfStatement {
-    return { kind: "IfStatement", condition, body };
+function IfStatement(
+    condition: Expression,
+    body: Statement[],
+    else_body?: Statement[]
+): IfStatement {
+    return { kind: "IfStatement", condition, body, else_body };
 }
 
 export type Statement = Return | VariableDeclaration | Expression | IfStatement;
@@ -320,6 +325,7 @@ export function parseExpression(
 }
 
 export function parseStatement(scanner: Scanner): Statement {
+    // TODO: Make this function return ParseResult
     const next = scanner.peek();
     if (next.kind === "return") {
         // Parse: return <expr> ;
@@ -356,15 +362,18 @@ export function parseStatement(scanner: Scanner): Statement {
         expect("cparen", scanner);
 
         // Parse: statement ; | { [statement] } ;
-        const next = scanner.peek();
-        if (next.kind === "obrace") {
-            expect("obrace", scanner);
-            const body = parseBasicBlock(scanner);
-            expect("cbrace", scanner);
-            if (body.isErr()) throw new Error(body.unwrapErr().toString());
-            return IfStatement(expression, body.unwrap());
+        const body = parseBasicBlockOrSingleStatement(scanner);
+        if (body.isErr()) throw new Error(body.unwrapErr().toString());
+
+        if (scanner.peek().kind === "else") {
+            expect("else", scanner);
+            const else_body = parseBasicBlockOrSingleStatement(scanner);
+            if (else_body.isErr()) {
+                throw new Error(else_body.unwrapErr().toString());
+            }
+            return IfStatement(expression, body.unwrap(), else_body.unwrap());
         } else {
-            return IfStatement(expression, [parseStatement(scanner)]);
+            return IfStatement(expression, body.unwrap());
         }
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
@@ -382,6 +391,20 @@ function parseBasicBlock(scanner: Scanner): ParseResult<Statement[]> {
         statements.push(parseStatement(scanner));
     }
     return Ok(statements);
+}
+
+function parseBasicBlockOrSingleStatement(
+    scanner: Scanner
+): ParseResult<Statement[]> {
+    const next = scanner.peek();
+    if (next.kind === "obrace") {
+        expect("obrace", scanner);
+        const body = parseBasicBlock(scanner);
+        expect("cbrace", scanner);
+        return body;
+    } else {
+        return Ok([parseStatement(scanner)]);
+    }
 }
 
 function parseFunctionDeclaration(scanner: Scanner): ParseResult<Function> {

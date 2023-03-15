@@ -32,6 +32,7 @@ export type TokenType =
     | "comment"
     | "assignment"
     | "if"
+    | "else"
     | "eof";
 
 export interface Token {
@@ -48,6 +49,7 @@ function readToken(input: string, position: number): Result<Token, string> {
     const patterns: [TokenType, RegExp][] = [
         ["return", /^(return)\w*/],
         ["if", /^(if)\w*/],
+        ["else", /^(else)\w*/],
         ["identifier", /^[a-zA-Z_]\w*/],
         ["bitwise_complement", /^\~/],
         ["decrement", /^\--/],
