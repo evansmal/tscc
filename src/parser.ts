@@ -156,12 +156,28 @@ function VariableAssignment(
     return { kind: "VariableAssignment", src, dst };
 }
 
+interface TernaryExpression {
+    kind: "TernaryExpression";
+    condition: Expression;
+    is_true: Expression;
+    is_false: Expression;
+}
+
+function TernaryExpression(
+    condition: Expression,
+    is_true: Expression,
+    is_false: Expression
+): TernaryExpression {
+    return { kind: "TernaryExpression", condition, is_true, is_false };
+}
+
 export type Expression =
     | Constant
     | UnaryExpression
     | BinaryExpression
     | VariableReference
-    | VariableAssignment;
+    | VariableAssignment
+    | TernaryExpression;
 
 export interface VariableDeclaration {
     kind: "VariableDeclaration";
@@ -303,7 +319,6 @@ export function parseExpression(
     scanner: Scanner,
     minimum_precedence: number = 0
 ): Expression {
-    // Handle assignments otherwise we should precedence climb
     let left = parseFactor(scanner);
     let token = scanner.peek();
     if (token.kind === "assignment") {
@@ -324,13 +339,25 @@ export function parseExpression(
     return left;
 }
 
+export function parseConditionalExpression(scanner: Scanner): Expression {
+    const expression = parseExpression(scanner);
+    if (scanner.peek().kind === "question_mark") {
+        expect("question_mark", scanner);
+        const is_true = parseExpression(scanner);
+        expect("colon", scanner);
+        const is_false = parseExpression(scanner);
+        return TernaryExpression(expression, is_true, is_false);
+    }
+    return expression;
+}
+
 export function parseStatement(scanner: Scanner): Statement {
     // TODO: Make this function return ParseResult
     const next = scanner.peek();
     if (next.kind === "return") {
         // Parse: return <expr> ;
         expect("return", scanner);
-        const expression = parseExpression(scanner);
+        const expression = parseConditionalExpression(scanner);
         const statement = Return(expression);
         expect("semicolon", scanner);
         return statement;
@@ -343,7 +370,7 @@ export function parseStatement(scanner: Scanner): Statement {
             const statement = VariableDeclaration(
                 Identifier("int"),
                 Identifier(variable_name.value),
-                parseExpression(scanner)
+                parseConditionalExpression(scanner)
             );
             expect("semicolon", scanner);
             return statement;
@@ -358,7 +385,7 @@ export function parseStatement(scanner: Scanner): Statement {
         // Parse: if(<expr>) { [statement] } ;
         expect("if", scanner);
         expect("oparen", scanner);
-        const expression = parseExpression(scanner, 0);
+        const expression = parseConditionalExpression(scanner);
         expect("cparen", scanner);
 
         // Parse: statement ; | { [statement] } ;
@@ -377,7 +404,7 @@ export function parseStatement(scanner: Scanner): Statement {
         }
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
-        const expression = parseExpression(scanner);
+        const expression = parseConditionalExpression(scanner);
         expect("semicolon", scanner);
         return expression;
     } else {

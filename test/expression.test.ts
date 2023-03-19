@@ -1,10 +1,8 @@
 import { parserTest } from "./statement.test.js";
 
-import { parseExpression } from "../src/parser.js";
-import { lex, getScanner } from "../src/lexer.js";
+import { parseExpression, parseConditionalExpression } from "../src/parser.js";
 import * as Evaluator from "../src/evaluator.js";
 
-import test from "node:test";
 import assert from "node:assert";
 
 const testAssignmentToConstantExpression = (params: [string, number]) => {
@@ -55,3 +53,26 @@ testBinaryOperationExpression(4, "+", 2);
 testBinaryOperationExpression(10, "-", 8);
 testBinaryOperationExpression(2, "/", 3);
 testBinaryOperationExpression(11, "*", 1);
+
+parserTest(`Parse ternary expression`, `1 + 2 ? 3 : 4`, (scanner) => {
+    const expression = parseConditionalExpression(scanner);
+
+    console.error(JSON.stringify(expression, null, 4));
+    assert(
+        expression.kind === "TernaryExpression",
+        "Parsed as ternary expression"
+    );
+
+    assert(expression.condition.kind === "BinaryExpression");
+    assert(expression.condition.operator.operand === "Add");
+    assert(expression.condition.left.kind === "Constant");
+    assert(expression.condition.left.value === 1);
+    assert(expression.condition.right.kind === "Constant");
+    assert(expression.condition.right.value === 2);
+
+    assert(expression.is_true.kind === "Constant");
+    assert(expression.is_true.value === 3);
+
+    assert(expression.is_false.kind === "Constant");
+    assert(expression.is_false.value === 4);
+});

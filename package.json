@@ -13,7 +13,7 @@
     },
     "dependencies": {
         "@types/node": "^18.15.0",
-        "typescript": "^4.9.5"
+        "typescript": "^5.0.2"
     },
     "devDependencies": {
         "prettier": "^2.8.4"

@@ -11,7 +11,9 @@ export type TokenType =
     | "cbracket"
     | "float"
     | "int"
+    | "colon"
     | "semicolon"
+    | "question_mark"
     | "string"
     | "bitwise_complement"
     | "decrement"
@@ -52,6 +54,8 @@ function readToken(input: string, position: number): Result<Token, string> {
         ["else", /^(else)\w*/],
         ["identifier", /^[a-zA-Z_]\w*/],
         ["bitwise_complement", /^\~/],
+        ["colon", /^\:/],
+        ["question_mark", /^\?/],
         ["decrement", /^\--/],
         ["negation", /^\-/],
         ["oparen", /^\(/],
