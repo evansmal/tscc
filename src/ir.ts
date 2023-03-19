@@ -345,12 +345,14 @@ function lowerStatement(
         }
     } else if (statement.kind === "IfStatement") {
         const cond = lowerExpression(statement.condition, instructions, scope);
+        const true_label = scope.createLabel("is_true");
         const false_label = scope.createLabel("is_false");
         instructions.push(
             JumpIfZero(cond, false_label.identifier),
             ...statement.body.flatMap((statement) =>
                 lowerStatement(statement, scope)
             ),
+            Jump(true_label.identifier),
             false_label
         );
         if (statement.else_body) {
@@ -360,6 +362,7 @@ function lowerStatement(
                 )
             );
         }
+        instructions.push(true_label);
     } else if (
         statement.kind === "Constant" ||
         statement.kind === "UnaryExpression" ||
