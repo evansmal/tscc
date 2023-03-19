@@ -285,7 +285,7 @@ function parseBinaryOperator(scanner: Scanner): BinaryOperator {
     else throw new Error(`Could not parse binary operator '${token.kind}'`);
 }
 
-const BINOP_PRECEDENCE = {
+const TOKEN_PRECEDENCE = {
     plus: 45,
     negation: 45,
     asterisk: 50,
@@ -298,20 +298,21 @@ const BINOP_PRECEDENCE = {
     equal_to: 30,
     not_equal_to: 30,
     logical_and: 10,
-    logical_or: 5
+    logical_or: 5,
+    question_mark: 3
 } as const;
 
-type BinaryOperandTokenType = keyof typeof BINOP_PRECEDENCE;
+type BinaryOperandTokenType = keyof typeof TOKEN_PRECEDENCE;
 
-function isTokenKindBinaryOperator(
+function doesTokenKindHavePrecedence(
     token_type: TokenType
 ): token_type is BinaryOperandTokenType {
-    return Object.hasOwn(BINOP_PRECEDENCE, token_type);
+    return Object.hasOwn(TOKEN_PRECEDENCE, token_type);
 }
 
 function getTokenPrecedence(token: Token): number {
-    if (isTokenKindBinaryOperator(token.kind)) {
-        return BINOP_PRECEDENCE[token.kind];
+    if (doesTokenKindHavePrecedence(token.kind)) {
+        return TOKEN_PRECEDENCE[token.kind];
     } else throw new Error(`Unknown precedence for token ${token}`);
 }
 
@@ -328,27 +329,26 @@ export function parseExpression(
         return VariableAssignment(parseExpression(scanner), left);
     }
     while (
-        isTokenKindBinaryOperator(token.kind) &&
+        doesTokenKindHavePrecedence(token.kind) &&
         getTokenPrecedence(token) >= minimum_precedence
     ) {
-        const operator = parseBinaryOperator(scanner);
-        const right = parseExpression(scanner, getTokenPrecedence(token) + 1);
-        left = BinaryExpression(operator, left, right);
+        if (token.kind === "question_mark") {
+            expect("question_mark", scanner);
+            const is_true = parseExpression(scanner);
+            expect("colon", scanner);
+            const is_false = parseExpression(scanner);
+            left = TernaryExpression(left, is_true, is_false);
+        } else {
+            const operator = parseBinaryOperator(scanner);
+            const right = parseExpression(
+                scanner,
+                getTokenPrecedence(token) + 1
+            );
+            left = BinaryExpression(operator, left, right);
+        }
         token = scanner.peek();
     }
     return left;
-}
-
-export function parseConditionalExpression(scanner: Scanner): Expression {
-    const expression = parseExpression(scanner);
-    if (scanner.peek().kind === "question_mark") {
-        expect("question_mark", scanner);
-        const is_true = parseExpression(scanner);
-        expect("colon", scanner);
-        const is_false = parseExpression(scanner);
-        return TernaryExpression(expression, is_true, is_false);
-    }
-    return expression;
 }
 
 export function parseStatement(scanner: Scanner): Statement {
@@ -357,7 +357,7 @@ export function parseStatement(scanner: Scanner): Statement {
     if (next.kind === "return") {
         // Parse: return <expr> ;
         expect("return", scanner);
-        const expression = parseConditionalExpression(scanner);
+        const expression = parseExpression(scanner);
         const statement = Return(expression);
         expect("semicolon", scanner);
         return statement;
@@ -370,7 +370,7 @@ export function parseStatement(scanner: Scanner): Statement {
             const statement = VariableDeclaration(
                 Identifier("int"),
                 Identifier(variable_name.value),
-                parseConditionalExpression(scanner)
+                parseExpression(scanner)
             );
             expect("semicolon", scanner);
             return statement;
@@ -385,7 +385,7 @@ export function parseStatement(scanner: Scanner): Statement {
         // Parse: if(<expr>) { [statement] } ;
         expect("if", scanner);
         expect("oparen", scanner);
-        const expression = parseConditionalExpression(scanner);
+        const expression = parseExpression(scanner);
         expect("cparen", scanner);
 
         // Parse: statement ; | { [statement] } ;
@@ -404,7 +404,7 @@ export function parseStatement(scanner: Scanner): Statement {
         }
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
-        const expression = parseConditionalExpression(scanner);
+        const expression = parseExpression(scanner);
         expect("semicolon", scanner);
         return expression;
     } else {

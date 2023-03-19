@@ -1,6 +1,6 @@
 import { parserTest } from "./statement.test.js";
 
-import { parseExpression, parseConditionalExpression } from "../src/parser.js";
+import { parseExpression } from "../src/parser.js";
 import * as Evaluator from "../src/evaluator.js";
 
 import assert from "node:assert";
@@ -55,7 +55,7 @@ testBinaryOperationExpression(2, "/", 3);
 testBinaryOperationExpression(11, "*", 1);
 
 parserTest(`Parse ternary expression`, `1 + 2 ? 3 : 4`, (scanner) => {
-    const expression = parseConditionalExpression(scanner);
+    const expression = parseExpression(scanner);
 
     console.error(JSON.stringify(expression, null, 4));
     assert(
