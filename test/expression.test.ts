@@ -56,13 +56,10 @@ testBinaryOperationExpression(11, "*", 1);
 
 parserTest(`Parse ternary expression`, `1 + 2 ? 3 : 4`, (scanner) => {
     const expression = parseExpression(scanner);
-
-    console.error(JSON.stringify(expression, null, 4));
     assert(
         expression.kind === "TernaryExpression",
         "Parsed as ternary expression"
     );
-
     assert(expression.condition.kind === "BinaryExpression");
     assert(expression.condition.operator.operand === "Add");
     assert(expression.condition.left.kind === "Constant");
@@ -76,3 +73,32 @@ parserTest(`Parse ternary expression`, `1 + 2 ? 3 : 4`, (scanner) => {
     assert(expression.is_false.kind === "Constant");
     assert(expression.is_false.value === 4);
 });
+
+parserTest(
+    `Parse nested ternary expression`,
+    `1 ? (1 + 1 ? 2 : 3) : 4`,
+    (scanner) => {
+        const expression = parseExpression(scanner);
+        assert(
+            expression.kind === "TernaryExpression",
+            "Parsed as ternary expression"
+        );
+        assert(expression.condition.kind === "Constant");
+        assert(expression.condition.value === 1);
+
+        assert(expression.is_true.kind === "TernaryExpression");
+        assert(expression.is_true.condition.kind === "BinaryExpression");
+        assert(expression.is_true.condition.operator.operand === "Add");
+        assert(expression.is_true.condition.left.kind === "Constant");
+        assert(expression.is_true.condition.left.value === 1);
+        assert(expression.is_true.condition.right.kind === "Constant");
+        assert(expression.is_true.condition.right.value === 1);
+        assert(expression.is_true.is_true.kind === "Constant");
+        assert(expression.is_true.is_true.value === 2);
+        assert(expression.is_true.is_false.kind === "Constant");
+        assert(expression.is_true.is_false.value === 3);
+
+        assert(expression.is_false.kind === "Constant");
+        assert(expression.is_false.value === 4);
+    }
+);

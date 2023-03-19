@@ -328,6 +328,8 @@ export function parseExpression(
         expect("assignment", scanner);
         return VariableAssignment(parseExpression(scanner), left);
     }
+    // We now need to precedence climb to find the end of the expression
+    // which could be followed by a conditional expression
     while (
         doesTokenKindHavePrecedence(token.kind) &&
         getTokenPrecedence(token) >= minimum_precedence
