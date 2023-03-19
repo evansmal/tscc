@@ -32,7 +32,7 @@ export interface Identifier {
     value: string;
 }
 
-function Identifier(name: string): Identifier {
+export function Identifier(name: string): Identifier {
     return { kind: "Identifier", value: name };
 }
 
@@ -49,6 +49,13 @@ export function Function(name: Identifier, body: Statement[]): Function {
 export interface Constant {
     kind: "Constant";
     value: number;
+}
+
+export function Constant(value: number): Constant {
+    return {
+        kind: "Constant",
+        value
+    };
 }
 
 export type UnaryOperand =
@@ -139,17 +146,17 @@ export interface VariableReference {
     identifier: Identifier;
 }
 
-function VariableReference(identifier: Identifier): VariableReference {
+export function VariableReference(identifier: Identifier): VariableReference {
     return { kind: "VariableReference", identifier };
 }
 
-interface VariableAssignment {
+export interface VariableAssignment {
     kind: "VariableAssignment";
     src: Expression;
     dst: VariableReference;
 }
 
-function VariableAssignment(
+export function VariableAssignment(
     src: Expression,
     dst: VariableReference
 ): VariableAssignment {
@@ -186,7 +193,7 @@ export interface VariableDeclaration {
     value: Expression | undefined;
 }
 
-function VariableDeclaration(
+export function VariableDeclaration(
     type: Identifier,
     identifier: Identifier,
     value?: Expression
@@ -201,7 +208,7 @@ export interface IfStatement {
     else_body?: Statement[] | undefined;
 }
 
-function IfStatement(
+export function IfStatement(
     condition: Expression,
     body: Statement[],
     else_body?: Statement[]
@@ -210,6 +217,8 @@ function IfStatement(
 }
 
 export type Statement = Return | VariableDeclaration | Expression | IfStatement;
+
+export type Node = Expression | Statement | Program | Function | Identifier;
 
 function expect(token_type: TokenType, scanner: Scanner): ParseResult<Token> {
     const token = scanner.next();

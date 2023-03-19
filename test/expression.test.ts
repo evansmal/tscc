@@ -1,6 +1,14 @@
-import { parserTest } from "./statement.test.js";
+import { parserTest, matchNode } from "./statement.test.js";
 
-import { parseExpression } from "../src/parser.js";
+import {
+    parseExpression,
+    VariableAssignment,
+    Constant,
+    Identifier,
+    BinaryExpression,
+    BinaryOperator,
+    VariableReference
+} from "../src/parser.js";
 import * as Evaluator from "../src/evaluator.js";
 
 import assert from "node:assert";
@@ -11,11 +19,13 @@ const testAssignmentToConstantExpression = (params: [string, number]) => {
         `${params[0]} = ${params[1]}`,
         (scanner) => {
             const expression = parseExpression(scanner);
-            assert(expression.kind === "VariableAssignment");
-            assert(expression.dst.identifier.value === params[0]);
-
-            assert(expression.src.kind === "Constant");
-            assert(expression.src.value === params[1]);
+            matchNode(
+                expression,
+                VariableAssignment(
+                    Constant(params[1]),
+                    VariableReference(Identifier(params[0]))
+                )
+            );
             assert(Evaluator.walkExpression(expression) === params[1]);
         }
     );
@@ -34,12 +44,8 @@ const testBinaryOperationExpression = (
         (scanner) => {
             const expression = parseExpression(scanner);
             assert(expression.kind === "BinaryExpression");
-
-            assert(expression.left.kind === "Constant");
-            assert(expression.left.value === left);
-
-            assert(expression.right.kind === "Constant");
-            assert(expression.right.value === right);
+            matchNode(expression.left, Constant(left));
+            matchNode(expression.right, Constant(right));
 
             // TODO: Does eval always work here?
             assert(
@@ -60,18 +66,14 @@ parserTest(`Parse ternary expression`, `1 + 2 ? 3 : 4`, (scanner) => {
         expression.kind === "TernaryExpression",
         "Parsed as ternary expression"
     );
+
     assert(expression.condition.kind === "BinaryExpression");
     assert(expression.condition.operator.operand === "Add");
-    assert(expression.condition.left.kind === "Constant");
-    assert(expression.condition.left.value === 1);
-    assert(expression.condition.right.kind === "Constant");
-    assert(expression.condition.right.value === 2);
+    matchNode(expression.condition.left, Constant(1));
+    matchNode(expression.condition.right, Constant(2));
 
-    assert(expression.is_true.kind === "Constant");
-    assert(expression.is_true.value === 3);
-
-    assert(expression.is_false.kind === "Constant");
-    assert(expression.is_false.value === 4);
+    matchNode(expression.is_true, Constant(3));
+    matchNode(expression.is_false, Constant(4));
 });
 
 parserTest(
@@ -83,22 +85,14 @@ parserTest(
             expression.kind === "TernaryExpression",
             "Parsed as ternary expression"
         );
-        assert(expression.condition.kind === "Constant");
-        assert(expression.condition.value === 1);
-
+        matchNode(expression.condition, Constant(1));
         assert(expression.is_true.kind === "TernaryExpression");
         assert(expression.is_true.condition.kind === "BinaryExpression");
         assert(expression.is_true.condition.operator.operand === "Add");
-        assert(expression.is_true.condition.left.kind === "Constant");
-        assert(expression.is_true.condition.left.value === 1);
-        assert(expression.is_true.condition.right.kind === "Constant");
-        assert(expression.is_true.condition.right.value === 1);
-        assert(expression.is_true.is_true.kind === "Constant");
-        assert(expression.is_true.is_true.value === 2);
-        assert(expression.is_true.is_false.kind === "Constant");
-        assert(expression.is_true.is_false.value === 3);
-
-        assert(expression.is_false.kind === "Constant");
-        assert(expression.is_false.value === 4);
+        matchNode(expression.is_true.condition.left, Constant(1));
+        matchNode(expression.is_true.condition.right, Constant(1));
+        matchNode(expression.is_true.is_true, Constant(2));
+        matchNode(expression.is_true.is_false, Constant(3));
+        matchNode(expression.is_false, Constant(4));
     }
 );

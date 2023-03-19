@@ -1,4 +1,16 @@
-import { parseStatement } from "../src/parser.js";
+import {
+    Node,
+    parseStatement,
+    VariableDeclaration,
+    VariableReference,
+    VariableAssignment,
+    BinaryOperator,
+    BinaryExpression,
+    IfStatement,
+    Return,
+    Identifier,
+    Constant
+} from "../src/parser.js";
 import { lex, getScanner, Scanner } from "../src/lexer.js";
 
 import test from "node:test";
@@ -7,12 +19,20 @@ import assert from "node:assert";
 export function parserTest(
     desc: string,
     code: string,
-    fn: (scanner: Scanner) => void
+    f: (scanner: Scanner) => void
 ) {
     test(`${desc}: '${code}'`, () => {
         const scanner = getScanner(lex(code));
-        fn(scanner);
+        f(scanner);
     });
+}
+
+export function matchNode(actual: Node, expected: Node): void {
+    assert.deepStrictEqual(
+        actual,
+        expected,
+        `${actual.kind} is not ${expected.kind}`
+    );
 }
 
 const testVariableDefinitionStatementWithConstant = (
@@ -23,12 +43,13 @@ const testVariableDefinitionStatementWithConstant = (
         `int ${params[0]} = ${params[1]};`,
         (scanner) => {
             const statement = parseStatement(scanner);
-            assert(statement.kind === "VariableDeclaration");
-            assert(statement.identifier.value === params[0]);
-            assert(statement.value);
-            assert(
-                statement.value.kind === "Constant" &&
-                    statement.value.value === params[1]
+            matchNode(
+                statement,
+                VariableDeclaration(
+                    Identifier("int"),
+                    Identifier(params[0]),
+                    Constant(params[1])
+                )
             );
         }
     );
@@ -55,77 +76,94 @@ testVariableDeclarationStatement(["int", "a_b_c_d_e"]);
 
 parserTest("Parse variable assignment statement", "y = x = 5;", (scanner) => {
     const statement = parseStatement(scanner);
-    assert(statement.kind === "VariableAssignment");
-    assert(statement.dst.identifier.value === "y");
-
-    assert(statement.src.kind === "VariableAssignment");
-    assert(statement.src.src.kind === "Constant");
-    assert(statement.src.src.value === 5);
-    assert(statement.src.dst.identifier.value === "x");
+    matchNode(
+        statement,
+        VariableAssignment(
+            VariableAssignment(Constant(5), VariableReference(Identifier("x"))),
+            VariableReference(Identifier("y"))
+        )
+    );
 });
 
 parserTest("Parse if statement", "if(1) { return 1; }", (scanner) => {
     const conditional = parseStatement(scanner);
-    assert(conditional.kind === "IfStatement");
-    assert(conditional.condition.kind === "Constant");
-    assert(conditional.condition.value === 1);
-
-    assert(conditional.body.length === 1);
-    assert(conditional.body[0].kind === "Return");
+    matchNode(conditional, IfStatement(Constant(1), [Return(Constant(1))]));
 });
 
 parserTest("Parse if statement", "if(1 == 1) { x + y; }", (scanner) => {
     const conditional = parseStatement(scanner);
     assert(conditional.kind === "IfStatement");
-
-    assert(conditional.condition.kind === "BinaryExpression");
-    assert(conditional.condition.operator.operand === "Equal");
-    assert(conditional.condition.left.kind === "Constant");
-    assert(conditional.condition.left.value === 1);
-    assert(conditional.condition.right.kind === "Constant");
-    assert(conditional.condition.right.value === 1);
-
-    assert(conditional.body.length === 1);
-    assert(conditional.body[0].kind === "BinaryExpression");
-    assert(conditional.body[0].left.kind === "VariableReference");
-    assert(conditional.body[0].right.kind === "VariableReference");
+    matchNode(
+        conditional,
+        IfStatement(
+            BinaryExpression(BinaryOperator("Equal"), Constant(1), Constant(1)),
+            [
+                BinaryExpression(
+                    BinaryOperator("Add"),
+                    VariableReference(Identifier("x")),
+                    VariableReference(Identifier("y"))
+                )
+            ]
+        )
+    );
 });
 
 parserTest("Parse if statement", "if(2 + 3) return 0;", (scanner) => {
     const conditional = parseStatement(scanner);
     assert(conditional.kind === "IfStatement");
-
-    assert(conditional.condition.kind === "BinaryExpression");
-    assert(conditional.condition.operator.operand === "Add");
-    assert(conditional.condition.left.kind === "Constant");
-    assert(conditional.condition.left.value === 2);
-    assert(conditional.condition.right.kind === "Constant");
-    assert(conditional.condition.right.value === 3);
-
-    assert(conditional.body.length === 1);
-    assert(conditional.body[0].kind === "Return");
+    matchNode(
+        conditional,
+        IfStatement(
+            BinaryExpression(BinaryOperator("Add"), Constant(2), Constant(3)),
+            [Return(Constant(0))]
+        )
+    );
 });
 
 parserTest("Parse if else statement", "if(1) a = 1; else a = 2;", (scanner) => {
     const conditional = parseStatement(scanner);
-    assert(conditional.kind === "IfStatement");
-
-    assert(conditional.body.length === 1);
-
-    assert(conditional.else_body);
-    assert(conditional.else_body.length === 1);
+    matchNode(
+        conditional,
+        IfStatement(
+            Constant(1),
+            [
+                VariableAssignment(
+                    Constant(1),
+                    VariableReference(Identifier("a"))
+                )
+            ],
+            [
+                VariableAssignment(
+                    Constant(2),
+                    VariableReference(Identifier("a"))
+                )
+            ]
+        )
+    );
 });
 
 parserTest(
     "Parse if else statement blocks",
-    "if(1) {a = 1;} else {a = 2;}",
+    "if(1) {a = 5;} else {a = 10;}",
     (scanner) => {
         const conditional = parseStatement(scanner);
-        assert(conditional.kind === "IfStatement");
-
-        assert(conditional.body.length === 1);
-
-        assert(conditional.else_body);
-        assert(conditional.else_body.length === 1);
+        matchNode(
+            conditional,
+            IfStatement(
+                Constant(1),
+                [
+                    VariableAssignment(
+                        Constant(5),
+                        VariableReference(Identifier("a"))
+                    )
+                ],
+                [
+                    VariableAssignment(
+                        Constant(10),
+                        VariableReference(Identifier("a"))
+                    )
+                ]
+            )
+        );
     }
 );
