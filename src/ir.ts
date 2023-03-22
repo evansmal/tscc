@@ -313,6 +313,33 @@ function lowerExpression(
             ]
         );
         return variable.unwrap();
+    } else if (expression.kind === "TernaryExpression") {
+        const result = scope.createVariable();
+        const true_label = scope.createLabel("is_true");
+        const false_label = scope.createLabel("is_false");
+        const condition = lowerExpression(
+            expression.condition,
+            instructions,
+            scope
+        );
+        instructions.push(JumpIfZero(condition, false_label.identifier));
+        const truthy_value = lowerExpression(
+            expression.is_true,
+            instructions,
+            scope
+        );
+        instructions.push(
+            Copy(truthy_value, result),
+            Jump(true_label.identifier),
+            false_label
+        );
+        const false_value = lowerExpression(
+            expression.is_false,
+            instructions,
+            scope
+        );
+        instructions.push(Copy(false_value, result), true_label);
+        return result;
     } else {
         throw new Error(
             `Could not lower AST expression into IR instruction: ${inspect(
@@ -368,6 +395,7 @@ function lowerStatement(
         statement.kind === "UnaryExpression" ||
         statement.kind === "BinaryExpression" ||
         statement.kind === "VariableAssignment" ||
+        statement.kind === "TernaryExpression" ||
         statement.kind === "VariableReference"
     ) {
         lowerExpression(statement, instructions, scope);
