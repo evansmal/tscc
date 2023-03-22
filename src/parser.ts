@@ -233,6 +233,12 @@ function expect(token_type: TokenType, scanner: Scanner): ParseResult<Token> {
     return Ok(token);
 }
 
+function expectOrFail(token_type: TokenType, scanner: Scanner): Token {
+    const result = expect(token_type, scanner);
+    if (result.isErr()) throw new Error(result.unwrapErr().message);
+    else return result.unwrap();
+}
+
 // TODO: refactor unary ops using peek()
 function parseFactor(scanner: Scanner): Expression {
     const token = scanner.next();
@@ -267,7 +273,7 @@ function parseFactor(scanner: Scanner): Expression {
         );
     } else if (token.kind === "oparen") {
         const expr = parseExpression(scanner, 0);
-        expect("cparen", scanner);
+        expectOrFail("cparen", scanner);
         return expr;
     } else {
         throw new Error(`Could not parse expression '${token.kind}'`);
@@ -334,7 +340,7 @@ export function parseExpression(
     if (token.kind === "assignment") {
         // Parse: <id> = <expr>
         if (left.kind !== "VariableReference") throw new Error("UNEXP");
-        expect("assignment", scanner);
+        expectOrFail("assignment", scanner);
         return VariableAssignment(parseExpression(scanner), left);
     }
     // We now need to precedence climb to find the end of the expression
@@ -344,9 +350,9 @@ export function parseExpression(
         getTokenPrecedence(token) >= minimum_precedence
     ) {
         if (token.kind === "question_mark") {
-            expect("question_mark", scanner);
+            expectOrFail("question_mark", scanner);
             const is_true = parseExpression(scanner);
-            expect("colon", scanner);
+            expectOrFail("colon", scanner);
             const is_false = parseExpression(scanner);
             left = TernaryExpression(left, is_true, is_false);
         } else {
@@ -367,26 +373,26 @@ export function parseStatement(scanner: Scanner): Statement {
     const next = scanner.peek();
     if (next.kind === "return") {
         // Parse: return <expr> ;
-        expect("return", scanner);
+        expectOrFail("return", scanner);
         const expression = parseExpression(scanner);
         const statement = Return(expression);
-        expect("semicolon", scanner);
+        expectOrFail("semicolon", scanner);
         return statement;
     } else if (next.kind === "identifier" && next.value === "int") {
         // Parse: int <id> [ = <expr>] ;
-        expect("identifier", scanner);
+        expectOrFail("identifier", scanner);
         const variable_name = scanner.next();
         if (scanner.peek().kind === "assignment") {
-            expect("assignment", scanner);
+            expectOrFail("assignment", scanner);
             const statement = VariableDeclaration(
                 Identifier("int"),
                 Identifier(variable_name.value),
                 parseExpression(scanner)
             );
-            expect("semicolon", scanner);
+            expectOrFail("semicolon", scanner);
             return statement;
         } else {
-            expect("semicolon", scanner);
+            expectOrFail("semicolon", scanner);
             return VariableDeclaration(
                 Identifier("int"),
                 Identifier(variable_name.value)
@@ -394,17 +400,17 @@ export function parseStatement(scanner: Scanner): Statement {
         }
     } else if (next.kind === "if") {
         // Parse: if(<expr>) { [statement] } ;
-        expect("if", scanner);
-        expect("oparen", scanner);
+        expectOrFail("if", scanner);
+        expectOrFail("oparen", scanner);
         const expression = parseExpression(scanner);
-        expect("cparen", scanner);
+        expectOrFail("cparen", scanner);
 
         // Parse: statement ; | { [statement] } ;
         const body = parseBasicBlockOrSingleStatement(scanner);
         if (body.isErr()) throw new Error(body.unwrapErr().toString());
 
         if (scanner.peek().kind === "else") {
-            expect("else", scanner);
+            expectOrFail("else", scanner);
             const else_body = parseBasicBlockOrSingleStatement(scanner);
             if (else_body.isErr()) {
                 throw new Error(else_body.unwrapErr().toString());
@@ -416,7 +422,7 @@ export function parseStatement(scanner: Scanner): Statement {
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
         const expression = parseExpression(scanner);
-        expect("semicolon", scanner);
+        expectOrFail("semicolon", scanner);
         return expression;
     } else {
         throw new Error(`Unable to parse statement: ${JSON.stringify(next)}`);
@@ -436,9 +442,9 @@ function parseBasicBlockOrSingleStatement(
 ): ParseResult<Statement[]> {
     const next = scanner.peek();
     if (next.kind === "obrace") {
-        expect("obrace", scanner);
+        expectOrFail("obrace", scanner);
         const body = parseBasicBlock(scanner);
-        expect("cbrace", scanner);
+        expectOrFail("cbrace", scanner);
         return body;
     } else {
         return Ok([parseStatement(scanner)]);
