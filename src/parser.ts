@@ -170,7 +170,7 @@ interface TernaryExpression {
     is_false: Expression;
 }
 
-function TernaryExpression(
+export function TernaryExpression(
     condition: Expression,
     is_true: Expression,
     is_false: Expression
@@ -331,18 +331,12 @@ function getTokenPrecedence(token: Token): number {
     } else throw new Error(`Unknown precedence for token ${token}`);
 }
 
-export function parseExpression(
+export function parseConditionalExpression(
     scanner: Scanner,
     minimum_precedence: number = 0
 ): Expression {
     let left = parseFactor(scanner);
     let token = scanner.peek();
-    if (token.kind === "assignment") {
-        // Parse: <id> = <expr>
-        if (left.kind !== "VariableReference") throw new Error("UNEXP");
-        expectOrFail("assignment", scanner);
-        return VariableAssignment(parseExpression(scanner), left);
-    }
     // We now need to precedence climb to find the end of the expression
     // which could be followed by a conditional expression
     while (
@@ -350,10 +344,11 @@ export function parseExpression(
         getTokenPrecedence(token) >= minimum_precedence
     ) {
         if (token.kind === "question_mark") {
+            // If we see '?' we know we have a ternary expression
             expectOrFail("question_mark", scanner);
             const is_true = parseExpression(scanner);
             expectOrFail("colon", scanner);
-            const is_false = parseExpression(scanner);
+            const is_false = parseConditionalExpression(scanner);
             left = TernaryExpression(left, is_true, is_false);
         } else {
             const operator = parseBinaryOperator(scanner);
@@ -366,6 +361,22 @@ export function parseExpression(
         token = scanner.peek();
     }
     return left;
+}
+
+export function parseExpression(
+    scanner: Scanner,
+    minimum_precedence: number = 0
+): Expression {
+    // <exp> ::= <id> "=" <exp> | <conditional-exp>
+    const next = scanner.peekMany(2);
+    if (next[0].kind === "identifier" && next[1].kind === "assignment") {
+        const variable_name = expectOrFail("identifier", scanner);
+        expectOrFail("assignment", scanner);
+        const reference = VariableReference(Identifier(variable_name.value));
+        return VariableAssignment(parseExpression(scanner), reference);
+    } else {
+        return parseConditionalExpression(scanner, minimum_precedence);
+    }
 }
 
 export function parseStatement(scanner: Scanner): Statement {

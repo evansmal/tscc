@@ -6,6 +6,7 @@ import {
     VariableAssignment,
     BinaryOperator,
     BinaryExpression,
+    TernaryExpression,
     IfStatement,
     Return,
     Identifier,
@@ -163,6 +164,32 @@ parserTest(
                         VariableReference(Identifier("a"))
                     )
                 ]
+            )
+        );
+    }
+);
+
+parserTest(
+    "Parse ternary assignment statement",
+    "int b = 1 ? a = 1 : (a = 2);",
+    (scanner) => {
+        const assignment = parseStatement(scanner);
+        matchNode(
+            assignment,
+            VariableDeclaration(
+                Identifier("int"),
+                Identifier("b"),
+                TernaryExpression(
+                    Constant(1),
+                    VariableAssignment(
+                        Constant(1),
+                        VariableReference(Identifier("a"))
+                    ),
+                    VariableAssignment(
+                        Constant(2),
+                        VariableReference(Identifier("a"))
+                    )
+                )
             )
         );
     }

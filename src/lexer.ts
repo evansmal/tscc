@@ -114,6 +114,7 @@ export function lex(input: string): Token[] {
 export interface Scanner {
     next(): Token;
     peek(): Token;
+    peekMany(number_of_tokens: number): Token[];
 }
 
 export function getScanner(tokens: Token[]): Scanner {
@@ -128,6 +129,11 @@ export function getScanner(tokens: Token[]): Scanner {
             if (pos === tokens.length)
                 return { kind: "eof", value: "", position: pos };
             else return tokens[pos];
+        },
+        peekMany: (number_of_tokens: number) => {
+            if (pos === tokens.length)
+                return [{ kind: "eof", value: "", position: pos }];
+            else return tokens.slice(pos, pos + number_of_tokens);
         }
     };
 }
