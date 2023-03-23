@@ -216,7 +216,17 @@ export function IfStatement(
     return { kind: "IfStatement", condition, body, else_body };
 }
 
-export type Statement = Return | VariableDeclaration | Expression | IfStatement;
+interface CompoundStatement {
+    kind: "CompoundStatement";
+    body: Statement[];
+}
+
+export type Statement =
+    | Return
+    | VariableDeclaration
+    | Expression
+    | IfStatement
+    | CompoundStatement;
 
 export type Node = Expression | Statement | Program | Function | Identifier;
 
@@ -419,6 +429,14 @@ export function parseStatement(scanner: Scanner): Statement {
         // Parse: statement ; | { [statement] } ;
         const body = parseBasicBlockOrSingleStatement(scanner);
         if (body.isErr()) throw new Error(body.unwrapErr().toString());
+
+        // TODO: Improve how we handle 'if(1) int x;'
+        if (
+            body.unwrap().length === 1 &&
+            body.unwrap()[0].kind === "VariableDeclaration"
+        ) {
+            throw new Error("Expected expression");
+        }
 
         if (scanner.peek().kind === "else") {
             expectOrFail("else", scanner);

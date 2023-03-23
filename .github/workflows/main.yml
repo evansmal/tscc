@@ -26,3 +26,4 @@ jobs:
           yarn test 3
           yarn test 4
           yarn test 5
+          yarn test 6
