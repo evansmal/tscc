@@ -79,6 +79,8 @@ export function walk(program: Parser.Program): number {
                     : 0;
             } else if (statement.kind === "IfStatement") {
                 throw new Error("IfStatement is unsupported");
+            } else if (statement.kind === "CompoundStatement") {
+                throw new Error("CompoundStatement is unsupported");
             } else {
                 const _ = walkExpression(statement);
             }

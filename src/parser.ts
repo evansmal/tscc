@@ -204,21 +204,25 @@ export function VariableDeclaration(
 export interface IfStatement {
     kind: "IfStatement";
     condition: Expression;
-    body: Statement[];
-    else_body?: Statement[] | undefined;
+    body: CompoundStatement;
+    else_body?: CompoundStatement | undefined;
 }
 
 export function IfStatement(
     condition: Expression,
-    body: Statement[],
-    else_body?: Statement[]
+    body: CompoundStatement,
+    else_body?: CompoundStatement
 ): IfStatement {
     return { kind: "IfStatement", condition, body, else_body };
 }
 
-interface CompoundStatement {
+export interface CompoundStatement {
     kind: "CompoundStatement";
     body: Statement[];
+}
+
+export function CompoundStatement(body: Statement[]): CompoundStatement {
+    return { kind: "CompoundStatement", body };
 }
 
 export type Statement =
@@ -389,6 +393,16 @@ export function parseExpression(
     }
 }
 
+function parseCompoundStatement(scanner: Scanner): CompoundStatement {
+    expectOrFail("obrace", scanner);
+    const statements: Statement[] = [];
+    while (scanner.peek().kind !== "cbrace") {
+        statements.push(parseStatement(scanner));
+    }
+    expectOrFail("cbrace", scanner);
+    return CompoundStatement(statements);
+}
+
 export function parseStatement(scanner: Scanner): Statement {
     // TODO: Make this function return ParseResult
     const next = scanner.peek();
@@ -426,28 +440,36 @@ export function parseStatement(scanner: Scanner): Statement {
         const expression = parseExpression(scanner);
         expectOrFail("cparen", scanner);
 
-        // Parse: statement ; | { [statement] } ;
-        const body = parseBasicBlockOrSingleStatement(scanner);
-        if (body.isErr()) throw new Error(body.unwrapErr().toString());
+        // To simplify AST we treat the body as Statement[]
+        const statement = parseStatement(scanner);
+        const body =
+            statement.kind === "CompoundStatement"
+                ? statement
+                : CompoundStatement([statement]);
 
         // TODO: Improve how we handle 'if(1) int x;'
         if (
-            body.unwrap().length === 1 &&
-            body.unwrap()[0].kind === "VariableDeclaration"
+            body.kind === "CompoundStatement" &&
+            body.body.length === 1 &&
+            body.body[0].kind === "VariableDeclaration"
         ) {
             throw new Error("Expected expression");
         }
 
         if (scanner.peek().kind === "else") {
             expectOrFail("else", scanner);
-            const else_body = parseBasicBlockOrSingleStatement(scanner);
-            if (else_body.isErr()) {
-                throw new Error(else_body.unwrapErr().toString());
-            }
-            return IfStatement(expression, body.unwrap(), else_body.unwrap());
+            // To simplify AST we treat the else body as Statement[]
+            const else_statement = parseStatement(scanner);
+            const else_body =
+                else_statement.kind === "CompoundStatement"
+                    ? else_statement
+                    : CompoundStatement([else_statement]);
+            return IfStatement(expression, body, else_body);
         } else {
-            return IfStatement(expression, body.unwrap());
+            return IfStatement(expression, body);
         }
+    } else if (next.kind === "obrace") {
+        return parseCompoundStatement(scanner);
     } else if (next.kind === "identifier" || next.kind === "int") {
         // Parse: <expr> ;
         const expression = parseExpression(scanner);

@@ -376,7 +376,7 @@ function lowerStatement(
         const false_label = scope.createLabel("is_false");
         instructions.push(
             JumpIfZero(cond, false_label.identifier),
-            ...statement.body.flatMap((statement) =>
+            ...statement.body.body.flatMap((statement) =>
                 lowerStatement(statement, scope)
             ),
             Jump(true_label.identifier),
@@ -384,7 +384,7 @@ function lowerStatement(
         );
         if (statement.else_body) {
             instructions.push(
-                ...statement.else_body.flatMap((statement) =>
+                ...statement.else_body.body.flatMap((statement) =>
                     lowerStatement(statement, scope)
                 )
             );

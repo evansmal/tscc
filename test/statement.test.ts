@@ -8,6 +8,7 @@ import {
     BinaryExpression,
     TernaryExpression,
     IfStatement,
+    CompoundStatement,
     Return,
     Identifier,
     Constant
@@ -88,7 +89,10 @@ parserTest("Parse variable assignment statement", "y = x = 5;", (scanner) => {
 
 parserTest("Parse if statement", "if(1) { return 1; }", (scanner) => {
     const conditional = parseStatement(scanner);
-    matchNode(conditional, IfStatement(Constant(1), [Return(Constant(1))]));
+    matchNode(
+        conditional,
+        IfStatement(Constant(1), CompoundStatement([Return(Constant(1))]))
+    );
 });
 
 parserTest("Parse if statement", "if(1 == 1) { x + y; }", (scanner) => {
@@ -98,13 +102,13 @@ parserTest("Parse if statement", "if(1 == 1) { x + y; }", (scanner) => {
         conditional,
         IfStatement(
             BinaryExpression(BinaryOperator("Equal"), Constant(1), Constant(1)),
-            [
+            CompoundStatement([
                 BinaryExpression(
                     BinaryOperator("Add"),
                     VariableReference(Identifier("x")),
                     VariableReference(Identifier("y"))
                 )
-            ]
+            ])
         )
     );
 });
@@ -116,7 +120,7 @@ parserTest("Parse if statement", "if(2 + 3) return 0;", (scanner) => {
         conditional,
         IfStatement(
             BinaryExpression(BinaryOperator("Add"), Constant(2), Constant(3)),
-            [Return(Constant(0))]
+            CompoundStatement([Return(Constant(0))])
         )
     );
 });
@@ -127,18 +131,18 @@ parserTest("Parse if else statement", "if(1) a = 1; else a = 2;", (scanner) => {
         conditional,
         IfStatement(
             Constant(1),
-            [
+            CompoundStatement([
                 VariableAssignment(
                     Constant(1),
                     VariableReference(Identifier("a"))
                 )
-            ],
-            [
+            ]),
+            CompoundStatement([
                 VariableAssignment(
                     Constant(2),
                     VariableReference(Identifier("a"))
                 )
-            ]
+            ])
         )
     );
 });
@@ -148,22 +152,23 @@ parserTest(
     "if(1) {a = 5;} else {a = 10;}",
     (scanner) => {
         const conditional = parseStatement(scanner);
+        console.log(JSON.stringify(conditional, null, 4));
         matchNode(
             conditional,
             IfStatement(
                 Constant(1),
-                [
+                CompoundStatement([
                     VariableAssignment(
                         Constant(5),
                         VariableReference(Identifier("a"))
                     )
-                ],
-                [
+                ]),
+                CompoundStatement([
                     VariableAssignment(
                         Constant(10),
                         VariableReference(Identifier("a"))
                     )
-                ]
+                ])
             )
         );
     }
