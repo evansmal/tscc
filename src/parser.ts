@@ -488,20 +488,6 @@ function parseBasicBlock(scanner: Scanner): ParseResult<Statement[]> {
     return Ok(statements);
 }
 
-function parseBasicBlockOrSingleStatement(
-    scanner: Scanner
-): ParseResult<Statement[]> {
-    const next = scanner.peek();
-    if (next.kind === "obrace") {
-        expectOrFail("obrace", scanner);
-        const body = parseBasicBlock(scanner);
-        expectOrFail("cbrace", scanner);
-        return body;
-    } else {
-        return Ok([parseStatement(scanner)]);
-    }
-}
-
 function parseFunctionDeclaration(scanner: Scanner): ParseResult<Function> {
     const return_identifier = scanner.next();
     if (return_identifier.kind !== "identifier") {
