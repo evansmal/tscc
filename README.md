@@ -4,6 +4,8 @@
 
 ![Build](https://github.com/evansmal/tscc/actions/workflows/main.yml/badge.svg)
 
+I created this project to improve my knowledge of compilers and the C programming language. My goal is to keep the source code simple and readable while eventually reaching the point where it can compile non-trivial code. Like many others - I was inspired by the incremental approach from [this](http://scheme2006.cs.uchicago.edu/11-ghuloum.pdf) paper by Abdulaziz Ghuloum.
+
 ## Getting Started
 
 Start by cloning the repository and installing the dependencies:
@@ -36,6 +38,8 @@ yarn build && yarn test <stage>
 Where the stage is an integer value from 1 - 10. Currently, we pass test stages 1 - 5.
 
 ## References
+
+- [An Incremental Approach to Compiler Construction](http://scheme2006.cs.uchicago.edu/11-ghuloum.pdf)
 
 - [A Review of Assembly Language](http://www.scs.stanford.edu/nyu/04fa/notes/l2.pdf)
 
