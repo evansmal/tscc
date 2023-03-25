@@ -350,6 +350,15 @@ function lowerExpression(
     }
 }
 
+export function lowerCompoundStatement(
+    statement: Parser.CompoundStatement,
+    scope: Scope
+): Instruction[] {
+    return statement.body.flatMap((statement) =>
+        lowerStatement(statement, scope)
+    );
+}
+
 function lowerStatement(
     statement: Parser.Statement,
     scope: Scope
@@ -376,20 +385,18 @@ function lowerStatement(
         const false_label = scope.createLabel("is_false");
         instructions.push(
             JumpIfZero(cond, false_label.identifier),
-            ...statement.body.body.flatMap((statement) =>
-                lowerStatement(statement, scope)
-            ),
+            ...lowerCompoundStatement(statement.body, scope),
             Jump(true_label.identifier),
             false_label
         );
         if (statement.else_body) {
             instructions.push(
-                ...statement.else_body.body.flatMap((statement) =>
-                    lowerStatement(statement, scope)
-                )
+                ...lowerCompoundStatement(statement.else_body, scope)
             );
         }
         instructions.push(true_label);
+    } else if (statement.kind === "CompoundStatement") {
+        instructions.push(...lowerCompoundStatement(statement, scope));
     } else if (
         statement.kind === "Constant" ||
         statement.kind === "UnaryExpression" ||
