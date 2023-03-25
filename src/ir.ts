@@ -180,16 +180,15 @@ interface Scope {
 
 function createScope(outer?: Scope): Scope {
     let variable_start_id = 0;
-    const variables: Variable[] = outer ? [...outer.getVariables()] : [];
+    const variables: Variable[] = [];
     const createVariable = (name?: string) => {
-        // Check if a variable already exists
+        // Check if a variable already exists in the local scope
         if (
             name &&
             variables.filter((v) => v.identifier.value === name).length > 0
         ) {
             throw new Error("Cannot redeclare a variable");
         }
-
         const variable = Variable(
             Identifier(name ? name : `tmp${variable_start_id++}`)
         );
@@ -201,6 +200,8 @@ function createScope(outer?: Scope): Scope {
         for (let v of variables) {
             if (v.identifier.value === name) return Ok(v);
         }
+        // Might be in outer scope
+        if (outer) return outer.getVariable(name);
         return Err(`Cannot find variable name ${name}`);
     };
 
