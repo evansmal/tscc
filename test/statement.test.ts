@@ -152,7 +152,6 @@ parserTest(
     "if(1) {a = 5;} else {a = 10;}",
     (scanner) => {
         const conditional = parseStatement(scanner);
-        console.log(JSON.stringify(conditional, null, 4));
         matchNode(
             conditional,
             IfStatement(
