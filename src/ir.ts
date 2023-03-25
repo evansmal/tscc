@@ -173,12 +173,14 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
 interface Scope {
     createVariable: (name?: string) => Variable;
     getVariable: (name: string) => SemaError<Variable>;
+    getVariables: () => Variable[];
     createLabel: (name: string) => Label;
+    getCurrentLabelId: () => number;
 }
 
-function createScope(): Scope {
+function createScope(outer?: Scope): Scope {
     let variable_start_id = 0;
-    const variables: Variable[] = [];
+    const variables: Variable[] = outer ? [...outer.getVariables()] : [];
     const createVariable = (name?: string) => {
         // Check if a variable already exists
         if (
@@ -202,16 +204,26 @@ function createScope(): Scope {
         return Err(`Cannot find variable name ${name}`);
     };
 
-    let label_start_id = 0;
+    const getVariables = () => {
+        return variables;
+    };
+
+    let label_start_id = outer ? outer.getCurrentLabelId() : 0;
     const createLabel: (name: string) => Label = (name) => {
         const fully_qualified_name = `${name}_${label_start_id++}`;
         return Label(Identifier(fully_qualified_name));
     };
 
+    const getCurrentLabelId = () => {
+        return label_start_id;
+    };
+
     return {
         createVariable,
         getVariable,
-        createLabel
+        getVariables,
+        createLabel,
+        getCurrentLabelId
     };
 }
 
@@ -354,8 +366,9 @@ export function lowerCompoundStatement(
     statement: Parser.CompoundStatement,
     scope: Scope
 ): Instruction[] {
+    const new_scope = createScope(scope);
     return statement.body.flatMap((statement) =>
-        lowerStatement(statement, scope)
+        lowerStatement(statement, new_scope)
     );
 }
 

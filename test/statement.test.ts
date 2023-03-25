@@ -198,3 +198,21 @@ parserTest(
         );
     }
 );
+
+parserTest(
+    "Parse compound statement",
+    "{ int x; { int x; int y; } }",
+    (scanner) => {
+        const statement = parseStatement(scanner);
+        matchNode(
+            statement,
+            CompoundStatement([
+                VariableDeclaration(Identifier("int"), Identifier("x")),
+                CompoundStatement([
+                    VariableDeclaration(Identifier("int"), Identifier("x")),
+                    VariableDeclaration(Identifier("int"), Identifier("y"))
+                ])
+            ])
+        );
+    }
+);
