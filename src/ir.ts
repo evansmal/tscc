@@ -171,53 +171,63 @@ function lowerBinaryOperator(operator: Parser.BinaryOperator): BinaryOperator {
 }
 
 interface Scope {
-    createVariable: (name?: string) => Variable;
-    getVariable: (name: string) => SemaError<Variable>;
-    getVariables: () => Variable[];
+    createVariable: (name?: Parser.Identifier) => Variable;
+    getVariable: (name: Parser.Identifier) => SemaError<Variable>;
+    getVariables: () => Map<string, Variable>;
     createLabel: (name: string) => Label;
     getCurrentLabelId: () => number;
 }
 
-function createScope(outer?: Scope): Scope {
-    let variable_start_id = 0;
-    const variables: Variable[] = [];
-    const createVariable = (name?: string) => {
-        // Check if a variable already exists in the local scope
-        if (
-            name &&
-            variables.filter((v) => v.identifier.value === name).length > 0
-        ) {
-            throw new Error("Cannot redeclare a variable");
-        }
-        const variable = Variable(
-            Identifier(name ? name : `tmp${variable_start_id++}`)
-        );
-        variables.push(variable);
-        return variable;
-    };
+let GLOBAL_VARIABLE_ID = 0;
+let GLOBAL_LABEL_ID = 0;
 
-    const getVariable = (name: string) => {
-        for (let v of variables) {
-            if (v.identifier.value === name) return Ok(v);
+function createScope(outer?: Scope): Scope {
+    // Keep the original identifier name to help with debugging
+    const generateName = (name: string) => `${name}${GLOBAL_VARIABLE_ID++}`;
+
+    // Store a mapping from identifier (what the programmer writes) to a
+    // variable in the IR. We create unique variable names by using a global
+    // counter since we need to emulate the variable scoping here
+    const variables = new Map<string, Variable>();
+
+    function createVariable(name?: Parser.Identifier) {
+        // Check if a variable already exists in the local scope since we
+        // cannot reclare a local variable
+        if (name && variables.has(name.value)) {
+            throw new Error(`Cannot redeclare a variable named: ${name.value}`);
         }
-        // Might be in outer scope
+        const generated_name = generateName(name ? name.value : `tmp`);
+        const variable = Variable(Identifier(generated_name));
+
+        // If this is a named variable and not a temporary we should store it
+        // in the variable map
+        if (name) variables.set(name.value, variable);
+
+        return variable;
+    }
+
+    function getVariable(name: Identifier) {
+        // Attempt to find the variable locally (in the same scope)
+        const variable = variables.get(name.value);
+        if (variable) return Ok(variable);
+
+        // If we don't find it locally, we should recurse upwards to find it
         if (outer) return outer.getVariable(name);
         return Err(`Cannot find variable name ${name}`);
-    };
+    }
 
-    const getVariables = () => {
+    function getVariables() {
         return variables;
-    };
+    }
 
-    let label_start_id = outer ? outer.getCurrentLabelId() : 0;
-    const createLabel: (name: string) => Label = (name) => {
-        const fully_qualified_name = `${name}_${label_start_id++}`;
+    function createLabel(name: string) {
+        const fully_qualified_name = `${name}_${GLOBAL_LABEL_ID++}`;
         return Label(Identifier(fully_qualified_name));
-    };
+    }
 
-    const getCurrentLabelId = () => {
-        return label_start_id;
-    };
+    function getCurrentLabelId() {
+        return GLOBAL_LABEL_ID;
+    }
 
     return {
         createVariable,
@@ -308,14 +318,14 @@ function lowerExpression(
         instructions.push(...is);
         return dst;
     } else if (expression.kind === "VariableReference") {
-        if (scope.getVariable(expression.identifier.value).isErr()) {
+        if (scope.getVariable(expression.identifier).isErr()) {
             throw new Error(
-                "Variable '${expression.identifier.value}' does not exist"
+                `Variable '${expression.identifier.value}' does not exist`
             );
         }
-        return Variable(expression.identifier);
+        return scope.getVariable(expression.identifier).unwrap();
     } else if (expression.kind === "VariableAssignment") {
-        const variable = scope.getVariable(expression.dst.identifier.value);
+        const variable = scope.getVariable(expression.dst.identifier);
         if (variable.isErr()) throw new Error(variable.unwrapErr());
         instructions.push(
             ...[
@@ -382,7 +392,7 @@ function lowerStatement(
         const variable = lowerExpression(statement.expr, instructions, scope);
         instructions.push({ kind: "Return", value: variable });
     } else if (statement.kind === "VariableDeclaration") {
-        const variable = scope.createVariable(statement.identifier.value);
+        const variable = scope.createVariable(statement.identifier);
         if (statement.value) {
             instructions.push(
                 ...[
