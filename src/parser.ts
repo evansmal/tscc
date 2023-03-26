@@ -520,7 +520,9 @@ export function toString(program: Program): string {
 }
 
 export function parse(scanner: Scanner): ParseResult<Program> {
-    return parseFunctionDeclaration(scanner).map((f) => {
+    const program = parseFunctionDeclaration(scanner).map((f) => {
         return Program([f]);
     });
+    expectOrFail("eof", scanner);
+    return program;
 }
