@@ -296,22 +296,36 @@ function parseFactor(scanner: Scanner): Expression {
 
 function parseBinaryOperator(scanner: Scanner): BinaryOperator {
     const token = scanner.next();
-    if (token.kind === "plus") return BinaryOperator("Add");
-    else if (token.kind === "negation") return BinaryOperator("Subtract");
-    else if (token.kind === "asterisk") return BinaryOperator("Multiply");
-    else if (token.kind === "forward_slash") return BinaryOperator("Divide");
-    else if (token.kind === "percent") return BinaryOperator("Mod");
-    else if (token.kind === "logical_or") return BinaryOperator("Or");
-    else if (token.kind === "logical_and") return BinaryOperator("And");
-    else if (token.kind === "equal_to") return BinaryOperator("Equal");
-    else if (token.kind === "not_equal_to") return BinaryOperator("NotEqual");
-    else if (token.kind === "less_than") return BinaryOperator("Less");
-    else if (token.kind === "less_than_or_equal")
-        return BinaryOperator("LessOrEqual");
-    else if (token.kind === "greater_than") return BinaryOperator("Greater");
-    else if (token.kind === "greater_than_or_equal")
-        return BinaryOperator("GreaterOrEqual");
-    else throw new Error(`Could not parse binary operator '${token.kind}'`);
+    switch (token.kind) {
+        case "plus":
+            return BinaryOperator("Add");
+        case "negation":
+            return BinaryOperator("Subtract");
+        case "asterisk":
+            return BinaryOperator("Multiply");
+        case "forward_slash":
+            return BinaryOperator("Divide");
+        case "percent":
+            return BinaryOperator("Mod");
+        case "logical_or":
+            return BinaryOperator("Or");
+        case "logical_and":
+            return BinaryOperator("And");
+        case "equal_to":
+            return BinaryOperator("Equal");
+        case "not_equal_to":
+            return BinaryOperator("NotEqual");
+        case "less_than":
+            return BinaryOperator("Less");
+        case "less_than_or_equal":
+            return BinaryOperator("LessOrEqual");
+        case "greater_than":
+            return BinaryOperator("Greater");
+        case "greater_than_or_equal":
+            return BinaryOperator("GreaterOrEqual");
+        default:
+            throw new Error(`Could not parse binary operator '${token.kind}'`);
+    }
 }
 
 const TOKEN_PRECEDENCE = {
@@ -403,78 +417,96 @@ function parseCompoundStatement(scanner: Scanner): CompoundStatement {
     return CompoundStatement(statements);
 }
 
-export function parseStatement(scanner: Scanner): Statement {
-    // TODO: Make this function return ParseResult
-    const next = scanner.peek();
-    if (next.kind === "return") {
-        // Parse: return <expr> ;
-        expectOrFail("return", scanner);
-        const expression = parseExpression(scanner);
-        const statement = Return(expression);
+export function parseReturn(scanner: Scanner): Return {
+    // Parse: return <expr> ;
+    expectOrFail("return", scanner);
+    const expression = parseExpression(scanner);
+    const statement = Return(expression);
+    expectOrFail("semicolon", scanner);
+    return statement;
+}
+
+export function parseVariableDeclaration(
+    scanner: Scanner
+): VariableDeclaration {
+    // Parse: int <id> [ = <expr>] ;
+    expectOrFail("identifier", scanner);
+    const variable_name = scanner.next();
+    if (scanner.peek().kind === "assignment") {
+        expectOrFail("assignment", scanner);
+        const statement = VariableDeclaration(
+            Identifier("int"),
+            Identifier(variable_name.value),
+            parseExpression(scanner)
+        );
         expectOrFail("semicolon", scanner);
         return statement;
-    } else if (next.kind === "identifier" && next.value === "int") {
-        // Parse: int <id> [ = <expr>] ;
-        expectOrFail("identifier", scanner);
-        const variable_name = scanner.next();
-        if (scanner.peek().kind === "assignment") {
-            expectOrFail("assignment", scanner);
-            const statement = VariableDeclaration(
-                Identifier("int"),
-                Identifier(variable_name.value),
-                parseExpression(scanner)
-            );
-            expectOrFail("semicolon", scanner);
-            return statement;
-        } else {
-            expectOrFail("semicolon", scanner);
-            return VariableDeclaration(
-                Identifier("int"),
-                Identifier(variable_name.value)
-            );
-        }
-    } else if (next.kind === "if") {
-        // Parse: if(<expr>) { [statement] } ;
-        expectOrFail("if", scanner);
-        expectOrFail("oparen", scanner);
-        const expression = parseExpression(scanner);
-        expectOrFail("cparen", scanner);
-
-        // To simplify AST we treat the body as Statement[]
-        const statement = parseStatement(scanner);
-        const body =
-            statement.kind === "CompoundStatement"
-                ? statement
-                : CompoundStatement([statement]);
-
-        // TODO: Improve how we handle 'if(1) int x;'
-        if (
-            body.kind === "CompoundStatement" &&
-            body.body.length === 1 &&
-            body.body[0].kind === "VariableDeclaration"
-        ) {
-            throw new Error("Expected expression");
-        }
-
-        if (scanner.peek().kind === "else") {
-            expectOrFail("else", scanner);
-            // To simplify AST we treat the else body as Statement[]
-            const else_statement = parseStatement(scanner);
-            const else_body =
-                else_statement.kind === "CompoundStatement"
-                    ? else_statement
-                    : CompoundStatement([else_statement]);
-            return IfStatement(expression, body, else_body);
-        } else {
-            return IfStatement(expression, body);
-        }
-    } else if (next.kind === "obrace") {
-        return parseCompoundStatement(scanner);
-    } else if (next.kind === "identifier" || next.kind === "int") {
-        // Parse: <expr> ;
-        const expression = parseExpression(scanner);
+    } else {
         expectOrFail("semicolon", scanner);
-        return expression;
+        return VariableDeclaration(
+            Identifier("int"),
+            Identifier(variable_name.value)
+        );
+    }
+}
+
+export function parseIfStatement(scanner: Scanner): IfStatement {
+    // Parse: if(<expr>) { [statement] } ;
+    expectOrFail("if", scanner);
+    expectOrFail("oparen", scanner);
+    const expression = parseExpression(scanner);
+    expectOrFail("cparen", scanner);
+
+    // To simplify AST we treat the body as Statement[]
+    const statement = parseStatement(scanner);
+    const body =
+        statement.kind === "CompoundStatement"
+            ? statement
+            : CompoundStatement([statement]);
+
+    // TODO: Improve how we handle 'if(1) int x;'
+    if (
+        body.kind === "CompoundStatement" &&
+        body.body.length === 1 &&
+        body.body[0].kind === "VariableDeclaration"
+    ) {
+        throw new Error("Expected expression");
+    }
+
+    if (scanner.peek().kind === "else") {
+        expectOrFail("else", scanner);
+        // To simplify AST we treat the else body as Statement[]
+        const else_statement = parseStatement(scanner);
+        const else_body =
+            else_statement.kind === "CompoundStatement"
+                ? else_statement
+                : CompoundStatement([else_statement]);
+        return IfStatement(expression, body, else_body);
+    } else {
+        return IfStatement(expression, body);
+    }
+}
+
+export function parseExpressionStatement(scanner: Scanner): Expression {
+    // Parse: <expr> ;
+    const expression = parseExpression(scanner);
+    expectOrFail("semicolon", scanner);
+    return expression;
+}
+
+export function parseStatement(scanner: Scanner): Statement {
+    // TODO: Refactor to return ParseResult
+    const next = scanner.peek();
+    if (next.kind === "obrace") {
+        return parseCompoundStatement(scanner);
+    } else if (next.kind === "return") {
+        return parseReturn(scanner);
+    } else if (next.kind === "identifier" && next.value === "int") {
+        return parseVariableDeclaration(scanner);
+    } else if (next.kind === "if") {
+        return parseIfStatement(scanner);
+    } else if (next.kind === "identifier" || next.kind === "int") {
+        return parseExpressionStatement(scanner);
     } else {
         throw new Error(`Unable to parse statement: ${JSON.stringify(next)}`);
     }
