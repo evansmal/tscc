@@ -225,12 +225,21 @@ export function CompoundStatement(body: Statement[]): CompoundStatement {
     return { kind: "CompoundStatement", body };
 }
 
+interface EmptyStatement {
+    kind: "EmptyStatement";
+}
+
+export function EmptyStatement(): EmptyStatement {
+    return { kind: "EmptyStatement" };
+}
+
 export type Statement =
     | Return
     | VariableDeclaration
     | Expression
     | IfStatement
-    | CompoundStatement;
+    | CompoundStatement
+    | EmptyStatement;
 
 export type Node = Expression | Statement | Program | Function | Identifier;
 
@@ -494,6 +503,11 @@ export function parseExpressionStatement(scanner: Scanner): Expression {
     return expression;
 }
 
+export function parseEmptyStatement(scanner: Scanner): EmptyStatement {
+    expectOrFail("semicolon", scanner);
+    return EmptyStatement();
+}
+
 export function parseStatement(scanner: Scanner): Statement {
     // TODO: Refactor to return ParseResult
     const next = scanner.peek();
@@ -507,6 +521,8 @@ export function parseStatement(scanner: Scanner): Statement {
         return parseIfStatement(scanner);
     } else if (next.kind === "identifier" || next.kind === "int") {
         return parseExpressionStatement(scanner);
+    } else if (next.kind === "semicolon") {
+        return parseEmptyStatement(scanner);
     } else {
         throw new Error(`Unable to parse statement: ${JSON.stringify(next)}`);
     }
