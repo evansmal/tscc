@@ -9,7 +9,7 @@ import {
     TernaryExpression,
     IfStatement,
     CompoundStatement,
-    EmptyStatement,
+    NullStatement,
     Return,
     Identifier,
     Constant
@@ -219,7 +219,7 @@ parserTest(
 );
 
 parserTest(
-    "Parse empty statement",
+    "Parse null statement",
     "{ int x;; int y;;; x + 123456789; }",
     (scanner) => {
         const statement = parseStatement(scanner);
@@ -227,10 +227,10 @@ parserTest(
             statement,
             CompoundStatement([
                 VariableDeclaration(Identifier("int"), Identifier("x")),
-                EmptyStatement(),
+                NullStatement(),
                 VariableDeclaration(Identifier("int"), Identifier("y")),
-                EmptyStatement(),
-                EmptyStatement(),
+                NullStatement(),
+                NullStatement(),
                 BinaryExpression(
                     BinaryOperator("Add"),
                     VariableReference(Identifier("x")),

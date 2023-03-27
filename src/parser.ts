@@ -225,12 +225,12 @@ export function CompoundStatement(body: Statement[]): CompoundStatement {
     return { kind: "CompoundStatement", body };
 }
 
-interface EmptyStatement {
-    kind: "EmptyStatement";
+interface NullStatement {
+    kind: "NullStatement";
 }
 
-export function EmptyStatement(): EmptyStatement {
-    return { kind: "EmptyStatement" };
+export function NullStatement(): NullStatement {
+    return { kind: "NullStatement" };
 }
 
 export type Statement =
@@ -239,7 +239,7 @@ export type Statement =
     | Expression
     | IfStatement
     | CompoundStatement
-    | EmptyStatement;
+    | NullStatement;
 
 export type Node = Expression | Statement | Program | Function | Identifier;
 
@@ -503,9 +503,9 @@ export function parseExpressionStatement(scanner: Scanner): Expression {
     return expression;
 }
 
-export function parseEmptyStatement(scanner: Scanner): EmptyStatement {
+export function parseEmptyStatement(scanner: Scanner): NullStatement {
     expectOrFail("semicolon", scanner);
-    return EmptyStatement();
+    return NullStatement();
 }
 
 export function parseStatement(scanner: Scanner): Statement {
