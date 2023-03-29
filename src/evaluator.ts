@@ -83,6 +83,8 @@ export function walk(program: Parser.Program): number {
                 throw new Error("CompoundStatement is unsupported");
             } else if (statement.kind === "NullStatement") {
                 // Do nothing
+            } else if (statement.kind === "ForStatement") {
+                throw new Error("ForStatement is unsupported");
             } else {
                 const _ = walkExpression(statement);
             }

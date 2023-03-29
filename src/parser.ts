@@ -216,6 +216,23 @@ export function IfStatement(
     return { kind: "IfStatement", condition, body, else_body };
 }
 
+export interface ForStatement {
+    kind: "ForStatement";
+    initial: Statement;
+    condition: Statement;
+    post: Expression | undefined;
+    body: Statement;
+}
+
+export function ForStatement(
+    initial: Statement,
+    condition: Statement,
+    post: Expression | undefined,
+    body: Statement
+): ForStatement {
+    return { kind: "ForStatement", initial, condition, post, body };
+}
+
 export interface CompoundStatement {
     kind: "CompoundStatement";
     body: Statement[];
@@ -238,6 +255,7 @@ export type Statement =
     | VariableDeclaration
     | Expression
     | IfStatement
+    | ForStatement
     | CompoundStatement
     | NullStatement;
 
@@ -496,6 +514,18 @@ export function parseIfStatement(scanner: Scanner): IfStatement {
     }
 }
 
+export function parseForStatement(scanner: Scanner): ForStatement {
+    expectOrFail("for", scanner);
+    expectOrFail("oparen", scanner);
+    const initial = parseStatement(scanner);
+    const condition = parseStatement(scanner);
+    const post =
+        scanner.peek().kind === "cparen" ? undefined : parseExpression(scanner);
+    expectOrFail("cparen", scanner);
+    const body = parseStatement(scanner);
+    return ForStatement(initial, condition, post, body);
+}
+
 export function parseExpressionStatement(scanner: Scanner): Expression {
     // Parse: <expr> ;
     const expression = parseExpression(scanner);
@@ -519,6 +549,8 @@ export function parseStatement(scanner: Scanner): Statement {
         return parseVariableDeclaration(scanner);
     } else if (next.kind === "if") {
         return parseIfStatement(scanner);
+    } else if (next.kind === "for") {
+        return parseForStatement(scanner);
     } else if (next.kind === "identifier" || next.kind === "int") {
         return parseExpressionStatement(scanner);
     } else if (next.kind === "semicolon") {

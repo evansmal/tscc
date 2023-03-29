@@ -8,6 +8,7 @@ import {
     BinaryExpression,
     TernaryExpression,
     IfStatement,
+    ForStatement,
     CompoundStatement,
     NullStatement,
     Return,
@@ -240,3 +241,44 @@ parserTest(
         );
     }
 );
+
+parserTest("Parse for statement", "for(int x = 0; x < 3; x) x;", (scanner) => {
+    const statement = parseStatement(scanner);
+    matchNode(
+        statement,
+        ForStatement(
+            VariableDeclaration(
+                Identifier("int"),
+                Identifier("x"),
+                Constant(0)
+            ),
+            BinaryExpression(
+                BinaryOperator("Less"),
+                VariableReference(Identifier("x")),
+                Constant(3)
+            ),
+            VariableReference(Identifier("x")),
+            VariableReference(Identifier("x"))
+        )
+    );
+});
+
+parserTest(
+    "Parse for statement without post expression",
+    "for(a = 0; a > 5;) a * 2;",
+    (scanner) => {
+        const statement = parseStatement(scanner);
+        // TODO: Actually check contents of statement
+        // We can't use the standard assert because of
+        // undefined member in ForStatement
+        assert(statement.kind === "ForStatement");
+    }
+);
+
+parserTest("Parse for statement with null statement", "for(;;);", (scanner) => {
+    const statement = parseStatement(scanner);
+    // TODO: Actually check contents of statement
+    // We can't use the standard assert because of
+    // undefined member in ForStatement
+    assert(statement.kind === "ForStatement");
+});

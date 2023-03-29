@@ -35,6 +35,10 @@ export type TokenType =
     | "assignment"
     | "if"
     | "else"
+    | "for"
+    | "while"
+    | "break"
+    | "continue"
     | "eof";
 
 export interface Token {
@@ -52,6 +56,10 @@ function readToken(input: string, position: number): Result<Token, string> {
         ["return", /^(return)\w*/],
         ["if", /^(if)\w*/],
         ["else", /^(else)\w*/],
+        ["for", /^(for)\w*/],
+        ["while", /^(while)\w*/],
+        ["break", /^(break)\w*/],
+        ["continue", /^(continue)\w*/],
         ["identifier", /^[a-zA-Z_]\w*/],
         ["bitwise_complement", /^\~/],
         ["colon", /^\:/],
