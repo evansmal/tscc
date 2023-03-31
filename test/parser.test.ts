@@ -30,6 +30,15 @@ parserTest(
 );
 
 parserTest(
+    `Parse function declaration without parameters`,
+    `int a();`,
+    (scanner) => {
+        const declaration = parseExternalDeclarations(scanner);
+        matchNode(declaration, FunctionDeclaration(Identifier("a"), []));
+    }
+);
+
+parserTest(
     `Parse function definition`,
     `int abc(int hello, int world) { return hello; }`,
     (scanner) => {

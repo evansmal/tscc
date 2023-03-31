@@ -4,6 +4,7 @@ import {
     parseExpression,
     VariableAssignment,
     Constant,
+    FunctionCall,
     Identifier,
     VariableReference
 } from "../src/parser.js";
@@ -94,3 +95,20 @@ parserTest(
         matchNode(expression.is_false, Constant(4));
     }
 );
+
+parserTest(`Parse function call without arguments`, `a()`, (scanner) => {
+    const expression = parseExpression(scanner);
+    matchNode(expression, FunctionCall(Identifier("a"), []));
+});
+
+parserTest(`Parse function call`, `hello(1, 2, 3)`, (scanner) => {
+    const expression = parseExpression(scanner);
+    matchNode(
+        expression,
+        FunctionCall(Identifier("hello"), [
+            Constant(1),
+            Constant(2),
+            Constant(3)
+        ])
+    );
+});
