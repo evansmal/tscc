@@ -633,7 +633,9 @@ function parseFunctionParameters(scanner: Scanner): Parameter[] {
     return parameters;
 }
 
-function parseFunctionDeclaration(scanner: Scanner): FunctionDeclaration {
+export function parseFunctionDeclaration(
+    scanner: Scanner
+): FunctionDeclaration {
     expectOrFail("identifier", scanner); // return type
     const function_name = expectOrFail("identifier", scanner);
     expectOrFail("oparen", scanner);
@@ -653,7 +655,11 @@ export function parseExternalDeclarations(scanner: Scanner) {
         return declaration;
     } else {
         const body = parseCompoundStatement(scanner);
-        return FunctionDefinition(declaration.name, [], body);
+        return FunctionDefinition(
+            declaration.name,
+            declaration.parameters,
+            body
+        );
     }
 }
 

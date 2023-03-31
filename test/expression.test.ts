@@ -5,8 +5,6 @@ import {
     VariableAssignment,
     Constant,
     Identifier,
-    BinaryExpression,
-    BinaryOperator,
     VariableReference
 } from "../src/parser.js";
 import * as Evaluator from "../src/evaluator.js";
