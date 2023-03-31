@@ -6,7 +6,7 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc",
-        "test:unit": "node --test-reporter spec --test build/test/parser.test.js",
+        "test:unit": "node --test-reporter spec --test build/test",
         "test": "./test/run_tests.sh",
         "format": "prettier -w src/*.ts test/*.ts *.json",
         "clean": "rm -rf build"

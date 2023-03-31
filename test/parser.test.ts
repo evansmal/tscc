@@ -1,6 +1,4 @@
-import("./expression.test.js");
-
-import { parserTest, matchNode } from "./statement.test.js";
+import { parserTest, matchNode } from "./common.test.js";
 
 import {
     parseExternalDeclarations,
