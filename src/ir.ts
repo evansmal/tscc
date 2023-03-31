@@ -441,7 +441,7 @@ function lowerStatement(
     return instructions;
 }
 
-function lowerFunction(func: Parser.Function): Function {
+function lowerFunction(func: Parser.FunctionDefinition): Function {
     const scope = createScope();
     return {
         kind: "Function",

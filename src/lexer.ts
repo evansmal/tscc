@@ -39,6 +39,7 @@ export type TokenType =
     | "while"
     | "break"
     | "continue"
+    | "comma"
     | "eof";
 
 export interface Token {
@@ -90,6 +91,7 @@ function readToken(input: string, position: number): Result<Token, string> {
         ["forward_slash", /^\//],
         ["percent", /^\//],
         ["comment", /^\/\/.*/],
+        ["comma", /^\,.*/],
         ["assignment", /^\=/]
     ];
     for (let i = 0; i < patterns.length; i++) {

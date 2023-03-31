@@ -20,10 +20,10 @@ export type ParseResult<T> = Result<T, ParseError>;
 
 export interface Program {
     kind: "Program";
-    functions: Function[];
+    functions: FunctionDefinition[];
 }
 
-export function Program(functions: Function[]): Program {
+export function Program(functions: FunctionDefinition[]): Program {
     return { kind: "Program", functions };
 }
 
@@ -36,14 +36,42 @@ export function Identifier(name: string): Identifier {
     return { kind: "Identifier", value: name };
 }
 
-export interface Function {
-    kind: "Function";
+export interface Parameter {
+    kind: "Parameter";
+    type: Identifier;
     name: Identifier;
+}
+
+export function Parameter(type: Identifier, name: Identifier): Parameter {
+    return { kind: "Parameter", type, name };
+}
+
+export interface FunctionDeclaration {
+    kind: "FunctionDeclaration";
+    name: Identifier;
+    parameters: Parameter[];
+}
+
+export function FunctionDeclaration(
+    name: Identifier,
+    parameters: Parameter[]
+): FunctionDeclaration {
+    return { kind: "FunctionDeclaration", name, parameters };
+}
+
+export interface FunctionDefinition {
+    kind: "FunctionDefinition";
+    name: Identifier;
+    parameters: Parameter[];
     body: Statement[];
 }
 
-export function Function(name: Identifier, body: Statement[]): Function {
-    return { kind: "Function", name, body };
+export function FunctionDefinition(
+    name: Identifier,
+    parameters: Parameter[],
+    body: Statement[]
+): FunctionDefinition {
+    return { kind: "FunctionDefinition", name, parameters, body };
 }
 
 export interface Constant {
@@ -259,7 +287,12 @@ export type Statement =
     | CompoundStatement
     | NullStatement;
 
-export type Node = Expression | Statement | Program | Function | Identifier;
+export type Node =
+    | Expression
+    | Statement
+    | Program
+    | FunctionDeclaration
+    | Identifier;
 
 function expect(token_type: TokenType, scanner: Scanner): ParseResult<Token> {
     const token = scanner.next();
@@ -568,7 +601,9 @@ function parseBasicBlock(scanner: Scanner): ParseResult<Statement[]> {
     return Ok(statements);
 }
 
-function parseFunctionDeclaration(scanner: Scanner): ParseResult<Function> {
+function parseFunctionDeclaration(
+    scanner: Scanner
+): ParseResult<FunctionDefinition> {
     const return_identifier = scanner.next();
     if (return_identifier.kind !== "identifier") {
         return Err(
@@ -588,8 +623,9 @@ function parseFunctionDeclaration(scanner: Scanner): ParseResult<Function> {
 
     if (body.isErr()) return body;
 
-    const fn = Function(
+    const fn = FunctionDefinition(
         Identifier(function_name.unwrap().value),
+        [],
         body.unwrap()
     );
     return expect("cbrace", scanner).andThen((_) => Ok(fn));
