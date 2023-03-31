@@ -91,7 +91,7 @@ function readToken(input: string, position: number): Result<Token, string> {
         ["forward_slash", /^\//],
         ["percent", /^\//],
         ["comment", /^\/\/.*/],
-        ["comma", /^\,.*/],
+        ["comma", /^\,/],
         ["assignment", /^\=/]
     ];
     for (let i = 0; i < patterns.length; i++) {

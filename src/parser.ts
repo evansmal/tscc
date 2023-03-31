@@ -159,13 +159,27 @@ export function TernaryExpression(
     return { kind: "TernaryExpression", condition, is_true, is_false };
 }
 
+export interface FunctionCall {
+    kind: "FunctionCall";
+    name: Identifier;
+    args: Expression[];
+}
+
+export function FunctionCall(
+    name: Identifier,
+    args: Expression[]
+): FunctionCall {
+    return { kind: "FunctionCall", name, args };
+}
+
 export type Expression =
     | Constant
     | UnaryExpression
     | BinaryExpression
     | VariableReference
     | VariableAssignment
-    | TernaryExpression;
+    | TernaryExpression
+    | FunctionCall;
 
 export interface VariableDeclaration {
     kind: "VariableDeclaration";
@@ -315,16 +329,27 @@ function expectOrFail(token_type: TokenType, scanner: Scanner): Token {
     else return result.unwrap();
 }
 
+function parseFunctionArguments(scanner: Scanner): Expression[] {
+    const args: Expression[] = [];
+    while (scanner.peek().kind !== "cparen") {
+        args.push(parseExpression(scanner));
+        if (scanner.peek().kind === "comma") expectOrFail("comma", scanner);
+    }
+    return args;
+}
+
 // TODO: refactor unary ops using peek()
 function parseFactor(scanner: Scanner): Expression {
     const token = scanner.next();
-    if (token.kind === "identifier") {
+    if (token.kind === "identifier" && scanner.peek().kind === "oparen") {
+        expectOrFail("oparen", scanner);
+        const args = parseFunctionArguments(scanner);
+        expectOrFail("cparen", scanner);
+        return FunctionCall(Identifier(token.value), args);
+    } else if (token.kind === "identifier") {
         return VariableReference(Identifier(token.value));
     } else if (token.kind === "int") {
-        return {
-            kind: "Constant",
-            value: parseInt(token.value)
-        };
+        return Constant(parseInt(token.value));
     } else if (token.kind === "bitwise_complement") {
         return UnaryExpression(
             UnaryOperator("Complement"),
@@ -595,13 +620,26 @@ export function parseStatement(scanner: Scanner): Statement {
     }
 }
 
+function parseFunctionParameters(scanner: Scanner): Parameter[] {
+    const parameters: Parameter[] = [];
+    while (scanner.peek().kind !== "cparen") {
+        const type = expectOrFail("identifier", scanner);
+        const name = expectOrFail("identifier", scanner);
+        parameters.push(
+            Parameter(Identifier(type.value), Identifier(name.value))
+        );
+        if (scanner.peek().kind === "comma") expectOrFail("comma", scanner);
+    }
+    return parameters;
+}
+
 function parseFunctionDeclaration(scanner: Scanner): FunctionDeclaration {
     expectOrFail("identifier", scanner); // return type
     const function_name = expectOrFail("identifier", scanner);
     expectOrFail("oparen", scanner);
-    // TODO: handle parameters
+    const parameters = parseFunctionParameters(scanner);
     expectOrFail("cparen", scanner);
-    return FunctionDeclaration(Identifier(function_name.value), []);
+    return FunctionDeclaration(Identifier(function_name.value), parameters);
 }
 
 export function toString(program: Program): string {
