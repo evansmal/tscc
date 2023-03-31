@@ -446,8 +446,15 @@ function lowerFunction(func: Parser.FunctionDefinition): Function {
     return {
         kind: "Function",
         name: func.name,
-        body: func.body.flatMap((statement) => lowerStatement(statement, scope))
+        body: func.body.body.flatMap((statement) =>
+            lowerStatement(statement, scope)
+        )
     };
+}
+
+function lowerExternalDeclaration(decl: Parser.ExternalDeclaration) {
+    if (decl.kind === "FunctionDefinition") return lowerFunction(decl);
+    else throw new Error("Cannot handle declaration");
 }
 
 export function toString(program: Program): string {
@@ -457,6 +464,6 @@ export function toString(program: Program): string {
 export function lower(program: Parser.Program): Program {
     return {
         kind: "Program",
-        functions: program.functions.map(lowerFunction)
+        functions: program.declarations.map(lowerExternalDeclaration)
     };
 }

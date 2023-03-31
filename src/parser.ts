@@ -18,15 +18,6 @@ function ParseError(message: string, position: number = 0): ParseError {
 
 export type ParseResult<T> = Result<T, ParseError>;
 
-export interface Program {
-    kind: "Program";
-    functions: FunctionDefinition[];
-}
-
-export function Program(functions: FunctionDefinition[]): Program {
-    return { kind: "Program", functions };
-}
-
 export interface Identifier {
     kind: "Identifier";
     value: string;
@@ -34,44 +25,6 @@ export interface Identifier {
 
 export function Identifier(name: string): Identifier {
     return { kind: "Identifier", value: name };
-}
-
-export interface Parameter {
-    kind: "Parameter";
-    type: Identifier;
-    name: Identifier;
-}
-
-export function Parameter(type: Identifier, name: Identifier): Parameter {
-    return { kind: "Parameter", type, name };
-}
-
-export interface FunctionDeclaration {
-    kind: "FunctionDeclaration";
-    name: Identifier;
-    parameters: Parameter[];
-}
-
-export function FunctionDeclaration(
-    name: Identifier,
-    parameters: Parameter[]
-): FunctionDeclaration {
-    return { kind: "FunctionDeclaration", name, parameters };
-}
-
-export interface FunctionDefinition {
-    kind: "FunctionDefinition";
-    name: Identifier;
-    parameters: Parameter[];
-    body: Statement[];
-}
-
-export function FunctionDefinition(
-    name: Identifier,
-    parameters: Parameter[],
-    body: Statement[]
-): FunctionDefinition {
-    return { kind: "FunctionDefinition", name, parameters, body };
 }
 
 export interface Constant {
@@ -287,12 +240,61 @@ export type Statement =
     | CompoundStatement
     | NullStatement;
 
+export interface Parameter {
+    kind: "Parameter";
+    type: Identifier;
+    name: Identifier;
+}
+
+export function Parameter(type: Identifier, name: Identifier): Parameter {
+    return { kind: "Parameter", type, name };
+}
+
+export interface FunctionDeclaration {
+    kind: "FunctionDeclaration";
+    name: Identifier;
+    parameters: Parameter[];
+}
+
+export function FunctionDeclaration(
+    name: Identifier,
+    parameters: Parameter[]
+): FunctionDeclaration {
+    return { kind: "FunctionDeclaration", name, parameters };
+}
+
+export interface FunctionDefinition {
+    kind: "FunctionDefinition";
+    name: Identifier;
+    parameters: Parameter[];
+    body: CompoundStatement;
+}
+
+export function FunctionDefinition(
+    name: Identifier,
+    parameters: Parameter[],
+    body: CompoundStatement
+): FunctionDefinition {
+    return { kind: "FunctionDefinition", name, parameters, body };
+}
+
+export type ExternalDeclaration = FunctionDefinition | FunctionDeclaration;
+
+export interface Program {
+    kind: "Program";
+    declarations: ExternalDeclaration[];
+}
+
+export function Program(declarations: ExternalDeclaration[]): Program {
+    return { kind: "Program", declarations };
+}
+
 export type Node =
+    | Identifier
     | Expression
     | Statement
-    | Program
-    | FunctionDeclaration
-    | Identifier;
+    | ExternalDeclaration
+    | Program;
 
 function expect(token_type: TokenType, scanner: Scanner): ParseResult<Token> {
     const token = scanner.next();
@@ -593,52 +595,35 @@ export function parseStatement(scanner: Scanner): Statement {
     }
 }
 
-function parseBasicBlock(scanner: Scanner): ParseResult<Statement[]> {
-    const statements: Statement[] = [];
-    while (scanner.peek().kind !== "cbrace") {
-        statements.push(parseStatement(scanner));
-    }
-    return Ok(statements);
-}
-
-function parseFunctionDeclaration(
-    scanner: Scanner
-): ParseResult<FunctionDefinition> {
-    const return_identifier = scanner.next();
-    if (return_identifier.kind !== "identifier") {
-        return Err(
-            ParseError(
-                `Expected function return type but got '${return_identifier.value}'`,
-                return_identifier.position
-            )
-        );
-    }
-    const function_name = expect("identifier", scanner);
-    if (function_name.isErr()) return function_name;
-
-    const body = expect("oparen", scanner)
-        .andThen((_) => expect("cparen", scanner))
-        .andThen((_) => expect("obrace", scanner))
-        .andThen((_) => parseBasicBlock(scanner));
-
-    if (body.isErr()) return body;
-
-    const fn = FunctionDefinition(
-        Identifier(function_name.unwrap().value),
-        [],
-        body.unwrap()
-    );
-    return expect("cbrace", scanner).andThen((_) => Ok(fn));
+function parseFunctionDeclaration(scanner: Scanner): FunctionDeclaration {
+    expectOrFail("identifier", scanner); // return type
+    const function_name = expectOrFail("identifier", scanner);
+    expectOrFail("oparen", scanner);
+    // TODO: handle parameters
+    expectOrFail("cparen", scanner);
+    return FunctionDeclaration(Identifier(function_name.value), []);
 }
 
 export function toString(program: Program): string {
     return inspect(program, { depth: null, colors: true });
 }
 
+export function parseExternalDeclarations(scanner: Scanner) {
+    const declaration = parseFunctionDeclaration(scanner);
+    if (scanner.peek().kind === "semicolon") {
+        expect("semicolon", scanner);
+        return declaration;
+    } else {
+        const body = parseCompoundStatement(scanner);
+        return FunctionDefinition(declaration.name, [], body);
+    }
+}
+
 export function parse(scanner: Scanner): ParseResult<Program> {
-    const program = parseFunctionDeclaration(scanner).map((f) => {
-        return Program([f]);
-    });
+    const declarations: ExternalDeclaration[] = [];
+    while (scanner.peek().kind !== "eof") {
+        declarations.push(parseExternalDeclarations(scanner));
+    }
     expectOrFail("eof", scanner);
-    return program;
+    return Ok(Program(declarations));
 }

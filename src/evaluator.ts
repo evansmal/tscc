@@ -69,26 +69,30 @@ export function walkExpression(expression: Parser.Expression): Value {
 
 export function walk(program: Parser.Program): number {
     let return_value = 0;
-    program.functions.forEach((fn) => {
-        fn.body.forEach((statement) => {
-            if (statement.kind === "Return") {
-                return_value = Number(walkExpression(statement.expr));
-            } else if (statement.kind === "VariableDeclaration") {
-                environment[statement.identifier.value] = statement.value
-                    ? walkExpression(statement.value)
-                    : 0;
-            } else if (statement.kind === "IfStatement") {
-                throw new Error("IfStatement is unsupported");
-            } else if (statement.kind === "CompoundStatement") {
-                throw new Error("CompoundStatement is unsupported");
-            } else if (statement.kind === "NullStatement") {
-                // Do nothing
-            } else if (statement.kind === "ForStatement") {
-                throw new Error("ForStatement is unsupported");
-            } else {
-                const _ = walkExpression(statement);
-            }
-        });
+    program.declarations.forEach((fn) => {
+        if (fn.kind === "FunctionDeclaration") {
+            console.log("Got a declaration but not doing anything");
+        } else {
+            fn.body.body.forEach((statement) => {
+                if (statement.kind === "Return") {
+                    return_value = Number(walkExpression(statement.expr));
+                } else if (statement.kind === "VariableDeclaration") {
+                    environment[statement.identifier.value] = statement.value
+                        ? walkExpression(statement.value)
+                        : 0;
+                } else if (statement.kind === "IfStatement") {
+                    throw new Error("IfStatement is unsupported");
+                } else if (statement.kind === "CompoundStatement") {
+                    throw new Error("CompoundStatement is unsupported");
+                } else if (statement.kind === "NullStatement") {
+                    // Do nothing
+                } else if (statement.kind === "ForStatement") {
+                    throw new Error("ForStatement is unsupported");
+                } else {
+                    const _ = walkExpression(statement);
+                }
+            });
+        }
     });
     return return_value;
 }
