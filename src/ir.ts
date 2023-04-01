@@ -10,6 +10,10 @@ export interface Program {
     functions: Function[];
 }
 
+export function Program(functions: Function[]): Program {
+    return { kind: "Program", functions };
+}
+
 export interface Identifier {
     kind: "Identifier";
     value: string;
@@ -129,6 +133,21 @@ function Label(identifier: Identifier): Label {
     return { kind: "Label", identifier };
 }
 
+export interface FunctionCall {
+    kind: "FunctionCall";
+    name: Identifier;
+    args: Value[];
+    dst: Value;
+}
+
+export function FunctionCall(
+    name: Identifier,
+    args: Value[],
+    dst: Value
+): FunctionCall {
+    return { kind: "FunctionCall", name, args, dst };
+}
+
 export type Instruction =
     | Return
     | UnaryInstruction
@@ -137,7 +156,8 @@ export type Instruction =
     | Jump
     | JumpIfZero
     | JumpIfNotZero
-    | Label;
+    | Label
+    | FunctionCall;
 
 export interface ConstantInteger {
     kind: "ConstantInteger";
@@ -297,6 +317,8 @@ function lowerBinaryExpression(
     }
 }
 
+function lowerFunctionCall(call: Parser.FunctionCall) {}
+
 function lowerExpression(
     expression: Parser.Expression,
     instructions: Instruction[],
@@ -363,6 +385,14 @@ function lowerExpression(
         );
         instructions.push(Copy(false_value, result), true_label);
         return result;
+    } else if (expression.kind === "FunctionCall") {
+        const args: Value[] = [];
+        const result = scope.createVariable();
+        for (const arg of expression.args) {
+            args.push(lowerExpression(arg, instructions, scope));
+        }
+        instructions.push(FunctionCall(expression.name, args, result));
+        return result;
     } else {
         throw new Error(
             `Could not lower AST expression into IR instruction: ${inspect(
@@ -427,6 +457,7 @@ function lowerStatement(
         statement.kind === "BinaryExpression" ||
         statement.kind === "VariableAssignment" ||
         statement.kind === "TernaryExpression" ||
+        statement.kind === "FunctionCall" ||
         statement.kind === "VariableReference"
     ) {
         lowerExpression(statement, instructions, scope);
@@ -441,7 +472,7 @@ function lowerStatement(
     return instructions;
 }
 
-function lowerFunction(func: Parser.FunctionDefinition): Function {
+function lowerFunctionDefinition(func: Parser.FunctionDefinition): Function {
     const scope = createScope();
     return {
         kind: "Function",
@@ -452,18 +483,16 @@ function lowerFunction(func: Parser.FunctionDefinition): Function {
     };
 }
 
-function lowerExternalDeclaration(decl: Parser.ExternalDeclaration) {
-    if (decl.kind === "FunctionDefinition") return lowerFunction(decl);
-    else throw new Error("Cannot handle declaration");
-}
-
 export function toString(program: Program): string {
     return inspect(program, { depth: null });
 }
 
 export function lower(program: Parser.Program): Program {
-    return {
-        kind: "Program",
-        functions: program.declarations.map(lowerExternalDeclaration)
-    };
+    const functions: Function[] = [];
+    for (const declaration of program.declarations) {
+        if (declaration.kind === "FunctionDefinition") {
+            functions.push(lowerFunctionDefinition(declaration));
+        }
+    }
+    return Program(functions);
 }

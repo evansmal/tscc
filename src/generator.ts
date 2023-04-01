@@ -19,7 +19,7 @@ interface Program {
 interface Function {
     kind: "Function";
     name: Identifier;
-    instructions: Instruction[];
+    instructions: InstructionX86[];
 }
 
 interface Imm {
@@ -31,7 +31,7 @@ function Imm(value: number): Imm {
     return { kind: "Imm", value };
 }
 
-type RegisterName = "ax" | "dx" | "r10" | "r11";
+type RegisterName = "ax" | "dx" | "r10" | "r11" | "sp" | "di";
 
 interface Register {
     kind: "Register";
@@ -216,7 +216,16 @@ function Label(identifier: Identifier): Label {
     return { kind: "Label", identifier };
 }
 
-type Instruction =
+export interface Call {
+    kind: "Call";
+    name: Identifier;
+}
+
+function Call(name: Identifier): Call {
+    return { kind: "Call", name };
+}
+
+type InstructionX86 =
     | Mov
     | Compare
     | SetConditionCode
@@ -229,7 +238,8 @@ type Instruction =
     | Jmp
     | JmpCC
     | SetCC
-    | Label;
+    | Label
+    | Call;
 
 function lowerUnaryOperator(operator: IR.UnaryOperator): UnaryOperator {
     if (operator === "Complement")
@@ -275,7 +285,7 @@ function lowerValue(value: IR.Value): Operand {
 
 function lowerUnaryInstruction(
     instruction: IR.UnaryInstruction
-): Instruction[] {
+): InstructionX86[] {
     if (instruction.operator === "LogicalNot") {
         const dst = lowerValue(instruction.dst);
         return [
@@ -314,7 +324,7 @@ function lowerRelationalBinaryInstruction(
 
 function lowerBinaryInstruction(
     instruction: IR.BinaryInstruction
-): Instruction[] {
+): InstructionX86[] {
     if (instruction.operator === "Divide") {
         return [
             Mov(lowerValue(instruction.first), Register("ax")),
@@ -361,29 +371,50 @@ function lowerBinaryInstruction(
     }
 }
 
-function lowerJumpIfZero(instruction: IR.JumpIfZero): Instruction[] {
+function lowerJumpIfZero(instruction: IR.JumpIfZero): InstructionX86[] {
     return [
         Compare(Imm(0), lowerValue(instruction.condition)),
         JmpCC("E", instruction.target)
     ];
 }
 
-function lowerJumpIfNotZero(instruction: IR.JumpIfNotZero): Instruction[] {
+function lowerJumpIfNotZero(instruction: IR.JumpIfNotZero): InstructionX86[] {
     return [
         Compare(Imm(0), lowerValue(instruction.condition)),
         JmpCC("NE", instruction.target)
     ];
 }
 
-function lowerJump(instruction: IR.Jump): Instruction[] {
+function lowerJump(instruction: IR.Jump): InstructionX86[] {
     return [Jmp(instruction.target)];
 }
 
-function lowerLabel(instruction: IR.Label): Instruction[] {
+function lowerLabel(instruction: IR.Label): InstructionX86[] {
     return [Label(instruction.identifier)];
 }
 
-function lowerInstruction(instruction: IR.Instruction): Instruction[] {
+function lowerFunctionCall(instruction: IR.FunctionCall): InstructionX86[] {
+    // Reverse arguments because cdecl calling convension requires it:
+    //    mov $3, %edi
+    //    mov $2, %esi
+    //    mov $1, %edx
+    //    call _foo
+    const args = [...instruction.args].reverse();
+
+    // TODO: support more than a single argument
+    if (args.length !== 1)
+        throw new Error(
+            "Cannot handle more than a single argument when calling functions"
+        );
+
+    return [
+        Mov(lowerValue(args[0]), Register("di")),
+        Call(instruction.name),
+        Mov(Register("ax"), lowerValue(instruction.dst))
+    ];
+}
+
+function lowerInstruction(instruction: IR.Instruction): InstructionX86[] {
     if (instruction.kind === "Return") {
         return [Mov(lowerValue(instruction.value), Register("ax")), Ret()];
     } else if (instruction.kind === "UnaryInstruction") {
@@ -400,6 +431,8 @@ function lowerInstruction(instruction: IR.Instruction): Instruction[] {
         return [Mov(lowerValue(instruction.src), lowerValue(instruction.dst))];
     } else if (instruction.kind === "Label") {
         return lowerLabel(instruction);
+    } else if (instruction.kind === "FunctionCall") {
+        return lowerFunctionCall(instruction);
     } else {
         throw new Error(
             `Could not lower IR.Instruction type '${inspect(instruction)}'`
@@ -461,10 +494,11 @@ function replacePseudoRegister(program: Program): number {
                 inst.kind === "CDQ" ||
                 inst.kind === "Label" ||
                 inst.kind === "Jmp" ||
-                inst.kind === "JmpCC"
-            )
+                inst.kind === "JmpCC" ||
+                inst.kind === "Call"
+            ) {
                 return inst;
-            else
+            } else
                 throw new Error(
                     `Unexpected instruction encountered when trying to replaced pseudoregisters: ${inspect(
                         inst
@@ -607,7 +641,7 @@ function unaryInstructionToString(instruction: UnaryInstruction) {
     return output;
 }
 
-function instructionToString(instruction: Instruction): string {
+function instructionToString(instruction: InstructionX86): string {
     let output = "";
     if (instruction.kind === "Mov")
         output += `MOV ${operandToString(instruction.src)}, ${operandToString(
@@ -641,6 +675,8 @@ function emitRegister(register: Register): string {
     if (register.name === "r10") return `%r10d`;
     else if (register.name === "ax") return `%eax`;
     else if (register.name === "r11") return `%r11d`;
+    else if (register.name === "sp") return `%rsp`;
+    else if (register.name === "di") return `%edi`;
     else throw new Error(`Cannot emit register ${inspect(register)}`);
 }
 
@@ -720,7 +756,11 @@ function emitLabel(label: Label): string {
     return `\n.${label.identifier.value}\:`;
 }
 
-function emitInstruction(instruction: Instruction): string {
+function emitCall(instruction: Call): string {
+    return `call ${instruction.name.value}`;
+}
+
+function emitInstruction(instruction: InstructionX86): string {
     if (instruction.kind === "Mov")
         return `movl ${emitOperand(instruction.src)}, ${emitOperand(
             instruction.dst
@@ -742,6 +782,7 @@ function emitInstruction(instruction: Instruction): string {
     else if (instruction.kind === "JmpCC") return emitJmpCC(instruction);
     else if (instruction.kind === "SetCC") return emitSetCC(instruction);
     else if (instruction.kind === "Label") return emitLabel(instruction);
+    else if (instruction.kind === "Call") return emitCall(instruction);
     else throw new Error(`Cannot emit instruction: ${inspect(instruction)}`);
 }
 

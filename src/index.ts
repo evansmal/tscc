@@ -9,7 +9,7 @@ import * as IR from "./ir.js";
 import * as Generator from "./generator.js";
 
 function assemble(source: string, output_filepath: string) {
-    const _ = execSync(`gcc -o ${output_filepath} -xassembler -`, {
+    const _ = execSync(`gcc -o ${output_filepath} -xassembler -lc -`, {
         stdio: ["pipe", "pipe", "pipe"],
         input: source
     });
