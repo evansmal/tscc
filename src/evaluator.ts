@@ -88,6 +88,8 @@ export function walk(program: Parser.Program): number {
                     // Do nothing
                 } else if (statement.kind === "ForStatement") {
                     throw new Error("ForStatement is unsupported");
+                } else if (statement.kind === "WhileStatement") {
+                    throw new Error("WhileStatement is unsupported");
                 } else {
                     const _ = walkExpression(statement);
                 }

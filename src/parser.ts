@@ -228,6 +228,19 @@ export function ForStatement(
     return { kind: "ForStatement", initial, condition, post, body };
 }
 
+export interface WhileStatement {
+    kind: "WhileStatement";
+    condition: Expression;
+    body: Statement;
+}
+
+export function WhileStatement(
+    condition: Expression,
+    body: Statement
+): WhileStatement {
+    return { kind: "WhileStatement", condition, body };
+}
+
 export interface CompoundStatement {
     kind: "CompoundStatement";
     body: Statement[];
@@ -251,6 +264,7 @@ export type Statement =
     | Expression
     | IfStatement
     | ForStatement
+    | WhileStatement
     | CompoundStatement
     | NullStatement;
 
@@ -586,6 +600,15 @@ export function parseForStatement(scanner: Scanner): ForStatement {
     return ForStatement(initial, condition, post, body);
 }
 
+export function parseWhileStatement(scanner: Scanner): WhileStatement {
+    expectOrFail("while", scanner);
+    expectOrFail("oparen", scanner);
+    const condition = parseExpression(scanner);
+    expectOrFail("cparen", scanner);
+    const body = parseStatement(scanner);
+    return WhileStatement(condition, body);
+}
+
 export function parseExpressionStatement(scanner: Scanner): Expression {
     // Parse: <expr> ;
     const expression = parseExpression(scanner);
@@ -611,6 +634,8 @@ export function parseStatement(scanner: Scanner): Statement {
         return parseIfStatement(scanner);
     } else if (next.kind === "for") {
         return parseForStatement(scanner);
+    } else if (next.kind === "while") {
+        return parseWhileStatement(scanner);
     } else if (next.kind === "identifier" || next.kind === "int") {
         return parseExpressionStatement(scanner);
     } else if (next.kind === "semicolon") {

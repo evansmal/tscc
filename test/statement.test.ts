@@ -8,6 +8,7 @@ import {
     TernaryExpression,
     IfStatement,
     ForStatement,
+    WhileStatement,
     CompoundStatement,
     NullStatement,
     Return,
@@ -261,4 +262,21 @@ parserTest("Parse for statement with null statement", "for(;;);", (scanner) => {
     // We can't use the standard assert because of
     // undefined member in ForStatement
     assert(statement.kind === "ForStatement");
+});
+
+parserTest("Parse while statement", "while(1) { int x = 1; }", (scanner) => {
+    const statement = parseStatement(scanner);
+    matchNode(
+        statement,
+        WhileStatement(
+            Constant(1),
+            CompoundStatement([
+                VariableDeclaration(
+                    Identifier("int"),
+                    Identifier("x"),
+                    Constant(1)
+                )
+            ])
+        )
+    );
 });
