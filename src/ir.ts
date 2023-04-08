@@ -474,6 +474,9 @@ function lowerStatement(
 
 function lowerFunctionDefinition(func: Parser.FunctionDefinition): Function {
     const scope = createScope();
+    func.parameters.forEach((p) => {
+        scope.createVariable(p.name);
+    });
     return {
         kind: "Function",
         name: func.name,

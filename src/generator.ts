@@ -13,13 +13,17 @@ function Identifier(name: string): Identifier {
 
 interface Program {
     kind: "Program";
-    function_defintion: Function;
+    function_definition: Function[];
 }
 
 interface Function {
     kind: "Function";
     name: Identifier;
     instructions: InstructionX86[];
+}
+
+function Function(name: Identifier, instructions: InstructionX86[]): Function {
+    return { kind: "Function", name, instructions };
 }
 
 interface Imm {
@@ -441,14 +445,17 @@ function lowerInstruction(instruction: IR.Instruction): InstructionX86[] {
 }
 
 function lowerFunction(func: IR.Function): Function {
-    return {
-        kind: "Function",
-        name: func.name,
-        instructions: func.body.flatMap(lowerInstruction)
-    };
+    const fn = Function(func.name, func.body.flatMap(lowerInstruction));
+    const total_offset = replacePseudoRegister(fn);
+    insertStackAllocation(fn, total_offset);
+    fixInvalidMovInstructions(fn);
+    fixInvalidCompareInstructions(fn);
+    fixInvalidBinaryInstructions(fn);
+    fixInvalidIDivInstructions(fn);
+    return fn;
 }
 
-function replacePseudoRegister(program: Program): number {
+function replacePseudoRegister(func: Function): number {
     let total_offset = 0;
     const offsets = new Map<string, Stack>();
 
@@ -466,45 +473,44 @@ function replacePseudoRegister(program: Program): number {
             : operand;
     }
 
-    program.function_defintion.instructions =
-        program.function_defintion.instructions.map((inst) => {
-            if (inst.kind === "UnaryInstruction") {
-                return inst.operand.kind === "PseudoRegister"
-                    ? UnaryInstruction(inst.operator, putOnStack(inst.operand))
-                    : inst;
-            } else if (inst.kind === "Mov") {
-                return Mov(replace(inst.src), replace(inst.dst));
-            } else if (inst.kind === "Compare") {
-                return Compare(replace(inst.src), replace(inst.dst));
-            } else if (inst.kind === "SetConditionCode") {
-                return SetConditionCode(inst.code, replace(inst.operand));
-            } else if (inst.kind === "BinaryInstruction") {
-                return BinaryInstruction(
-                    inst.operator,
-                    replace(inst.src),
-                    replace(inst.dst)
-                );
-            } else if (inst.kind === "IDiv") {
-                return IDiv(replace(inst.operand));
-            } else if (inst.kind === "SetCC") {
-                return SetCC(inst.condition, replace(inst.operand));
-            } else if (
-                inst.kind === "Ret" ||
-                inst.kind === "AllocateStack" ||
-                inst.kind === "CDQ" ||
-                inst.kind === "Label" ||
-                inst.kind === "Jmp" ||
-                inst.kind === "JmpCC" ||
-                inst.kind === "Call"
-            ) {
-                return inst;
-            } else
-                throw new Error(
-                    `Unexpected instruction encountered when trying to replaced pseudoregisters: ${inspect(
-                        inst
-                    )}`
-                );
-        });
+    func.instructions = func.instructions.map((inst) => {
+        if (inst.kind === "UnaryInstruction") {
+            return inst.operand.kind === "PseudoRegister"
+                ? UnaryInstruction(inst.operator, putOnStack(inst.operand))
+                : inst;
+        } else if (inst.kind === "Mov") {
+            return Mov(replace(inst.src), replace(inst.dst));
+        } else if (inst.kind === "Compare") {
+            return Compare(replace(inst.src), replace(inst.dst));
+        } else if (inst.kind === "SetConditionCode") {
+            return SetConditionCode(inst.code, replace(inst.operand));
+        } else if (inst.kind === "BinaryInstruction") {
+            return BinaryInstruction(
+                inst.operator,
+                replace(inst.src),
+                replace(inst.dst)
+            );
+        } else if (inst.kind === "IDiv") {
+            return IDiv(replace(inst.operand));
+        } else if (inst.kind === "SetCC") {
+            return SetCC(inst.condition, replace(inst.operand));
+        } else if (
+            inst.kind === "Ret" ||
+            inst.kind === "AllocateStack" ||
+            inst.kind === "CDQ" ||
+            inst.kind === "Label" ||
+            inst.kind === "Jmp" ||
+            inst.kind === "JmpCC" ||
+            inst.kind === "Call"
+        ) {
+            return inst;
+        } else
+            throw new Error(
+                `Unexpected instruction encountered when trying to replaced pseudoregisters: ${inspect(
+                    inst
+                )}`
+            );
+    });
     return total_offset;
 }
 
@@ -594,14 +600,8 @@ function fixInvalidIDivInstructions(func: Function) {
 export function generate(ir: IR.Program): Program {
     const program: Program = {
         kind: "Program",
-        function_defintion: lowerFunction(ir.functions[0])
+        function_definition: ir.functions.map(lowerFunction)
     };
-    const total_offset = replacePseudoRegister(program);
-    insertStackAllocation(program.function_defintion, total_offset);
-    fixInvalidMovInstructions(program.function_defintion);
-    fixInvalidCompareInstructions(program.function_defintion);
-    fixInvalidBinaryInstructions(program.function_defintion);
-    fixInvalidIDivInstructions(program.function_defintion);
     return program;
 }
 
@@ -666,7 +666,8 @@ function instructionToString(instruction: InstructionX86): string {
 }
 
 export function toString(program: Program): string {
-    return program.function_defintion.instructions
+    return program.function_definition
+        .flatMap((fn) => fn.instructions)
         .map(instructionToString)
         .join("\n");
 }
@@ -797,5 +798,5 @@ ${func.name.value}:
 }
 
 export function emit(program: Program): string {
-    return emitFunction(program.function_defintion);
+    return program.function_definition.map(emitFunction).join("\n");
 }
