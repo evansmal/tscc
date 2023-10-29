@@ -14,7 +14,7 @@ function assemble(source: string, output_filepath: string) {
         stdio: ["pipe", "pipe", "pipe"],
         input: source
     });
-    console.log(_);
+    // console.log(_);
 }
 
 export interface CompilerOptions {

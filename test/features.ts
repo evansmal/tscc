@@ -82,7 +82,17 @@ function loadTestSuite(directory: string): TestSuite {
 
 function main() {
     let any_failed = false;
-    const test_suite = loadTestSuite("test/features");
+
+    const test_suite =
+        process.argv.length > 2
+            ? {
+                  directory: "test/features",
+                  tests: process.argv.slice(2).map((file) => {
+                      return { name: file };
+                  })
+              }
+            : loadTestSuite("test/features");
+
     for (let i = 0; i < test_suite.tests.length; i++) {
         const name = test_suite.tests[i].name;
         const passed = name.startsWith("error")
