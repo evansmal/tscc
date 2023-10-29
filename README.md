@@ -29,18 +29,16 @@ Run the compiler:
 
 ## Unit Testing
 
-Fow now, this project uses [this](https://github.com/nlsandler/write_a_c_compiler) test suite for basic verification. You can run it using `yarn`:
-
-```sh
-yarn test <stage>
-```
-
-Where the stage is an integer value from 1 - 10. Currently, we pass test stages 1 - 7.
-
-There are also some unit tests that rely on the NodeJS test runner. These can be run with the following command:
+Run the unit tests:
 
 ```sh
 yarn test:unit
+```
+
+Run the end-to-end test suite:
+
+```sh
+yarn test:feature
 ```
 
 ## References
