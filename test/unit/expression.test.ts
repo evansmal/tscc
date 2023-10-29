@@ -7,8 +7,8 @@ import {
     FunctionCall,
     Identifier,
     VariableReference
-} from "../src/parser.js";
-import * as Evaluator from "../src/evaluator.js";
+} from "../../src/parser.js";
+import * as Evaluator from "../../src/evaluator.js";
 
 import assert from "node:assert";
 

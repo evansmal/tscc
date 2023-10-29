@@ -6,8 +6,9 @@
     "license": "MIT",
     "scripts": {
         "build": "tsc",
-        "test:unit": "node --test-reporter spec --test build/test",
-        "test": "./test/run_tests.sh",
+        "test:unit": "node --test-reporter spec --test build/test/unit",
+        "test:feature": "node build/test/features.js",
+        "test": "yarn test:unit && yarn test:feature",
         "format": "prettier -w src/*.ts test/*.ts *.json",
         "clean": "rm -rf build"
     },

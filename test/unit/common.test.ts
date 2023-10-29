@@ -1,5 +1,5 @@
-import { Node } from "../src/parser.js";
-import { lex, getScanner, Scanner } from "../src/lexer.js";
+import { Node } from "../../src/parser.js";
+import { lex, getScanner, Scanner } from "../../src/lexer.js";
 
 import test from "node:test";
 import assert from "node:assert";

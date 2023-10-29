@@ -14,7 +14,7 @@ import {
     Return,
     Identifier,
     Constant
-} from "../src/parser.js";
+} from "../../src/parser.js";
 
 import assert from "node:assert";
 

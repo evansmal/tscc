@@ -9,7 +9,7 @@ import {
     Return,
     Identifier,
     VariableReference
-} from "../src/parser.js";
+} from "../../src/parser.js";
 
 parserTest(
     `Parse function declaration`,

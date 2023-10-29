@@ -11,7 +11,7 @@ I created this project to improve my knowledge of compilers and the C programmin
 Start by cloning the repository and installing the dependencies:
 
 ```sh
-git clone --recurse-submodules https://github.com/evansmal/tscc.git
+git clone https://github.com/evansmal/tscc.git
 cd tscc && yarn install
 ```
 
