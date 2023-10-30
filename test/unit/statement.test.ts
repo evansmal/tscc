@@ -3,6 +3,7 @@ import {
     VariableDeclaration,
     VariableReference,
     VariableAssignment,
+    ExpressionStatement,
     BinaryOperator,
     BinaryExpression,
     TernaryExpression,
@@ -59,13 +60,18 @@ testVariableDeclarationStatement(["int", "a"]);
 testVariableDeclarationStatement(["int", "y"]);
 testVariableDeclarationStatement(["int", "a_b_c_d_e"]);
 
-parserTest("Parse variable assignment statement", "y = x = 5;", (scanner) => {
+parserTest("Parse variable assignment expression statement", "y = x = 5;", (scanner) => {
     const statement = parseStatement(scanner);
     matchNode(
         statement,
-        VariableAssignment(
-            VariableAssignment(Constant(5), VariableReference(Identifier("x"))),
-            VariableReference(Identifier("y"))
+        ExpressionStatement(
+            VariableAssignment(
+                VariableAssignment(
+                    Constant(5),
+                    VariableReference(Identifier("x"))
+                ),
+                VariableReference(Identifier("y"))
+            )
         )
     );
 });
@@ -86,10 +92,12 @@ parserTest("Parse if statement", "if(1 == 1) { x + y; }", (scanner) => {
         IfStatement(
             BinaryExpression(BinaryOperator("Equal"), Constant(1), Constant(1)),
             CompoundStatement([
-                BinaryExpression(
-                    BinaryOperator("Add"),
-                    VariableReference(Identifier("x")),
-                    VariableReference(Identifier("y"))
+                ExpressionStatement(
+                    BinaryExpression(
+                        BinaryOperator("Add"),
+                        VariableReference(Identifier("x")),
+                        VariableReference(Identifier("y"))
+                    )
                 )
             ])
         )
@@ -115,15 +123,19 @@ parserTest("Parse if else statement", "if(1) a = 1; else a = 2;", (scanner) => {
         IfStatement(
             Constant(1),
             CompoundStatement([
-                VariableAssignment(
-                    Constant(1),
-                    VariableReference(Identifier("a"))
+                ExpressionStatement(
+                    VariableAssignment(
+                        Constant(1),
+                        VariableReference(Identifier("a"))
+                    )
                 )
             ]),
             CompoundStatement([
-                VariableAssignment(
-                    Constant(2),
-                    VariableReference(Identifier("a"))
+                ExpressionStatement(
+                    VariableAssignment(
+                        Constant(2),
+                        VariableReference(Identifier("a"))
+                    )
                 )
             ])
         )
@@ -140,15 +152,19 @@ parserTest(
             IfStatement(
                 Constant(1),
                 CompoundStatement([
-                    VariableAssignment(
-                        Constant(5),
-                        VariableReference(Identifier("a"))
+                    ExpressionStatement(
+                        VariableAssignment(
+                            Constant(5),
+                            VariableReference(Identifier("a"))
+                        )
                     )
                 ]),
                 CompoundStatement([
-                    VariableAssignment(
-                        Constant(10),
-                        VariableReference(Identifier("a"))
+                    ExpressionStatement(
+                        VariableAssignment(
+                            Constant(10),
+                            VariableReference(Identifier("a"))
+                        )
                     )
                 ])
             )
@@ -213,10 +229,12 @@ parserTest(
                 VariableDeclaration(Identifier("int"), Identifier("y")),
                 NullStatement(),
                 NullStatement(),
-                BinaryExpression(
-                    BinaryOperator("Add"),
-                    VariableReference(Identifier("x")),
-                    Constant(123456789)
+                ExpressionStatement(
+                    BinaryExpression(
+                        BinaryOperator("Add"),
+                        VariableReference(Identifier("x")),
+                        Constant(123456789)
+                    )
                 )
             ])
         );
@@ -239,7 +257,7 @@ parserTest("Parse for statement", "for(int x = 0; x < 3; x) x;", (scanner) => {
                 Constant(3)
             ),
             VariableReference(Identifier("x")),
-            VariableReference(Identifier("x"))
+            ExpressionStatement(VariableReference(Identifier("x")))
         )
     );
 });

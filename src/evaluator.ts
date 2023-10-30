@@ -91,7 +91,7 @@ export function walk(program: Parser.Program): number {
                 } else if (statement.kind === "WhileStatement") {
                     throw new Error("WhileStatement is unsupported");
                 } else {
-                    const _ = walkExpression(statement);
+                    const _ = walkExpression(statement.expression);
                 }
             });
         }

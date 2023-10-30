@@ -213,15 +213,15 @@ export function IfStatement(
 
 export interface ForStatement {
     kind: "ForStatement";
-    initial: Statement;
-    condition: Statement;
+    initial: Expression | Declaration | undefined;
+    condition: Expression | undefined;
     post: Expression | undefined;
     body: Statement;
 }
 
 export function ForStatement(
-    initial: Statement,
-    condition: Statement,
+    initial: Expression | Declaration | undefined,
+    condition: Expression | undefined,
     post: Expression | undefined,
     body: Statement
 ): ForStatement {
@@ -258,15 +258,31 @@ export function NullStatement(): NullStatement {
     return { kind: "NullStatement" };
 }
 
+export interface ExpressionStatement {
+    kind: "ExpressionStatement";
+    expression: Expression;
+}
+
+export function ExpressionStatement(
+    expression: Expression
+): ExpressionStatement {
+    return { kind: "ExpressionStatement", expression };
+}
+
+export type JumpStatement = Return;
+export type IterationStatement = ForStatement | WhileStatement;
+export type ConditionalStatement = IfStatement;
+
 export type Statement =
-    | Return
-    | VariableDeclaration
-    | Expression
-    | IfStatement
-    | ForStatement
-    | WhileStatement
+    | ExpressionStatement
+    | ConditionalStatement
+    | IterationStatement
     | CompoundStatement
+    | VariableDeclaration
+    | JumpStatement
     | NullStatement;
+
+export type Declaration = VariableDeclaration;
 
 export interface Parameter {
     kind: "Parameter";
@@ -591,12 +607,34 @@ export function parseIfStatement(scanner: Scanner): IfStatement {
 export function parseForStatement(scanner: Scanner): ForStatement {
     expectOrFail("for", scanner);
     expectOrFail("oparen", scanner);
-    const initial = parseStatement(scanner);
-    const condition = parseStatement(scanner);
-    const post =
-        scanner.peek().kind === "cparen" ? undefined : parseExpression(scanner);
+
+    let initial = undefined;
+    if (scanner.peek().kind === "semicolon") {
+        expectOrFail("semicolon", scanner);
+    } else {
+        // TODO: Don't assume this is an int
+        initial =
+            scanner.peek().kind === "identifier" &&
+            scanner.peek().value === "int"
+                ? parseVariableDeclaration(scanner)
+                : parseExpressionStatement(scanner).expression;
+    }
+
+    let condition = undefined;
+    if (scanner.peek().kind === "semicolon") {
+        expectOrFail("semicolon", scanner);
+    } else {
+        condition = parseExpressionStatement(scanner).expression;
+    }
+
+    let post = undefined;
+    if (scanner.peek().kind !== "cparen") {
+        post = parseExpression(scanner);
+    }
     expectOrFail("cparen", scanner);
+
     const body = parseStatement(scanner);
+
     return ForStatement(initial, condition, post, body);
 }
 
@@ -609,11 +647,13 @@ export function parseWhileStatement(scanner: Scanner): WhileStatement {
     return WhileStatement(condition, body);
 }
 
-export function parseExpressionStatement(scanner: Scanner): Expression {
+export function parseExpressionStatement(
+    scanner: Scanner
+): ExpressionStatement {
     // Parse: <expr> ;
     const expression = parseExpression(scanner);
     expectOrFail("semicolon", scanner);
-    return expression;
+    return ExpressionStatement(expression);
 }
 
 export function parseEmptyStatement(scanner: Scanner): NullStatement {

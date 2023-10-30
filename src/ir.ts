@@ -451,36 +451,27 @@ function lowerStatement(
         instructions.push(true_label);
     } else if (statement.kind === "CompoundStatement") {
         instructions.push(...lowerCompoundStatement(statement, scope));
-    } else if (
-        statement.kind === "Constant" ||
-        statement.kind === "UnaryExpression" ||
-        statement.kind === "BinaryExpression" ||
-        statement.kind === "VariableAssignment" ||
-        statement.kind === "TernaryExpression" ||
-        statement.kind === "FunctionCall" ||
-        statement.kind === "VariableReference"
-    ) {
-        lowerExpression(statement, instructions, scope);
+    } else if (statement.kind === "ExpressionStatement") {
+        lowerExpression(statement.expression, instructions, scope);
     } else if (statement.kind === "ForStatement") {
         const begin_label = scope.createLabel("for_begin");
         const end_label = scope.createLabel("for_end");
 
         // TODO: Check these are expression statements properly
-        const initial = lowerExpression(<Parser.Expression>statement.initial, instructions, scope);
-
-        instructions.push(
-            begin_label
+        const initial = lowerExpression(
+            <Parser.Expression>statement.initial,
+            instructions,
+            scope
         );
-        const condition = lowerExpression(<Parser.Expression>statement.condition, instructions, scope)
-        instructions.push(
-            JumpIfZero(condition, end_label.identifier),
 
+        instructions.push(begin_label);
+        const condition = lowerExpression(
+            <Parser.Expression>statement.condition,
+            instructions,
+            scope
         );
+        instructions.push(JumpIfZero(condition, end_label.identifier));
         instructions.push(end_label);
-
-
-
-
     } else {
         throw new Error(
             `Could not lower AST statement into IR instruction: ${inspect(
