@@ -528,15 +528,15 @@ export function parseExpression(
 
 function parseCompoundStatement(scanner: Scanner): CompoundStatement {
     expectOrFail("obrace", scanner);
-    const statements: (Statement | Declaration)[] = [];
+    const items: BlockItem[] = [];
     while (scanner.peek().kind !== "cbrace") {
         const item = isSpecifier(scanner)
             ? parseDeclaration(scanner)
             : parseStatement(scanner);
-        statements.push(item);
+        items.push(item);
     }
     expectOrFail("cbrace", scanner);
-    return CompoundStatement(statements);
+    return CompoundStatement(items);
 }
 
 export function parseReturn(scanner: Scanner): Return {
