@@ -408,20 +408,18 @@ export function lowerCompoundStatement(
     scope: Scope
 ): Instruction[] {
     const new_scope = createScope(scope);
-    return statement.body.flatMap((statement) =>
-        lowerStatement(statement, new_scope)
-    );
+    return statement.body.flatMap((statement) => {
+        if (statement.kind === "VariableDeclaration") {
+            return lowerDeclaration(statement, new_scope);
+        } else {
+            return lowerStatement(statement, new_scope);
+        }
+    });
 }
 
-function lowerStatement(
-    statement: Parser.Statement,
-    scope: Scope
-): Instruction[] {
+function lowerDeclaration(statement: Parser.Declaration, scope: Scope) {
     const instructions: Instruction[] = [];
-    if (statement.kind === "Return") {
-        const variable = lowerExpression(statement.expr, instructions, scope);
-        instructions.push({ kind: "Return", value: variable });
-    } else if (statement.kind === "VariableDeclaration") {
+    if (statement.kind === "VariableDeclaration") {
         const variable = scope.createVariable(statement.identifier);
         if (statement.value) {
             instructions.push(
@@ -433,6 +431,20 @@ function lowerStatement(
                 ]
             );
         }
+    } else {
+        throw new Error();
+    }
+    return instructions;
+}
+
+function lowerStatement(
+    statement: Parser.Statement,
+    scope: Scope
+): Instruction[] {
+    const instructions: Instruction[] = [];
+    if (statement.kind === "Return") {
+        const variable = lowerExpression(statement.expr, instructions, scope);
+        instructions.push({ kind: "Return", value: variable });
     } else if (statement.kind === "IfStatement") {
         const cond = lowerExpression(statement.condition, instructions, scope);
         const true_label = scope.createLabel("is_true");
@@ -491,9 +503,13 @@ function lowerFunctionDefinition(func: Parser.FunctionDefinition): Function {
     return {
         kind: "Function",
         name: func.name,
-        body: func.body.body.flatMap((statement) =>
-            lowerStatement(statement, scope)
-        )
+        body: func.body.body.flatMap((statement) => {
+            if (statement.kind === "VariableDeclaration") {
+                return lowerDeclaration(statement, scope);
+            } else {
+                return lowerStatement(statement, scope);
+            }
+        })
     };
 }
 
