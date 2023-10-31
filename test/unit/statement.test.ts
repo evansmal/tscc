@@ -1,5 +1,6 @@
 import {
     parseStatement,
+    parseDeclaration,
     VariableDeclaration,
     VariableReference,
     VariableAssignment,
@@ -28,9 +29,9 @@ const testVariableDefinitionStatementWithConstant = (
         `Parse variable definition`,
         `int ${params[0]} = ${params[1]};`,
         (scanner) => {
-            const statement = parseStatement(scanner);
+            const declaration = parseDeclaration(scanner);
             matchNode(
-                statement,
+                declaration,
                 VariableDeclaration(
                     Identifier("int"),
                     Identifier(params[0]),
@@ -49,10 +50,10 @@ const testVariableDeclarationStatement = (params: [string, string]) => {
         `Parse variable declaration`,
         `${params[0]} ${params[1]};`,
         (scanner) => {
-            const statement = parseStatement(scanner);
-            assert(statement.kind === "VariableDeclaration");
-            assert(statement.type.value === params[0]);
-            assert(!statement.value);
+            const declaration = parseDeclaration(scanner);
+            assert(declaration.kind === "VariableDeclaration");
+            assert(declaration.type.value === params[0]);
+            assert(!declaration.value);
         }
     );
 };
@@ -60,21 +61,25 @@ testVariableDeclarationStatement(["int", "a"]);
 testVariableDeclarationStatement(["int", "y"]);
 testVariableDeclarationStatement(["int", "a_b_c_d_e"]);
 
-parserTest("Parse variable assignment expression statement", "y = x = 5;", (scanner) => {
-    const statement = parseStatement(scanner);
-    matchNode(
-        statement,
-        ExpressionStatement(
-            VariableAssignment(
+parserTest(
+    "Parse variable assignment expression statement",
+    "y = x = 5;",
+    (scanner) => {
+        const statement = parseStatement(scanner);
+        matchNode(
+            statement,
+            ExpressionStatement(
                 VariableAssignment(
-                    Constant(5),
-                    VariableReference(Identifier("x"))
-                ),
-                VariableReference(Identifier("y"))
+                    VariableAssignment(
+                        Constant(5),
+                        VariableReference(Identifier("x"))
+                    ),
+                    VariableReference(Identifier("y"))
+                )
             )
-        )
-    );
-});
+        );
+    }
+);
 
 parserTest("Parse if statement", "if(1) { return 1; }", (scanner) => {
     const conditional = parseStatement(scanner);
@@ -176,7 +181,7 @@ parserTest(
     "Parse ternary assignment statement",
     "int b = 1 ? a = 1 : (a = 2);",
     (scanner) => {
-        const assignment = parseStatement(scanner);
+        const assignment = parseDeclaration(scanner);
         matchNode(
             assignment,
             VariableDeclaration(
@@ -257,7 +262,9 @@ parserTest("Parse for statement", "for(int x = 0; x < 3; x) x;", (scanner) => {
                 Constant(3)
             ),
             VariableReference(Identifier("x")),
-            ExpressionStatement(VariableReference(Identifier("x")))
+            CompoundStatement([
+                ExpressionStatement(VariableReference(Identifier("x")))
+            ])
         )
     );
 });

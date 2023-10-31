@@ -241,12 +241,14 @@ export function WhileStatement(
     return { kind: "WhileStatement", condition, body };
 }
 
+export type BlockItem = Statement | Declaration;
+
 export interface CompoundStatement {
     kind: "CompoundStatement";
-    body: Statement[];
+    body: BlockItem[];
 }
 
-export function CompoundStatement(body: Statement[]): CompoundStatement {
+export function CompoundStatement(body: BlockItem[]): CompoundStatement {
     return { kind: "CompoundStatement", body };
 }
 
@@ -278,7 +280,6 @@ export type Statement =
     | ConditionalStatement
     | IterationStatement
     | CompoundStatement
-    | VariableDeclaration
     | JumpStatement
     | NullStatement;
 
@@ -337,6 +338,7 @@ export type Node =
     | Identifier
     | Expression
     | Statement
+    | Declaration
     | ExternalDeclaration
     | Program;
 
@@ -526,9 +528,12 @@ export function parseExpression(
 
 function parseCompoundStatement(scanner: Scanner): CompoundStatement {
     expectOrFail("obrace", scanner);
-    const statements: Statement[] = [];
+    const statements: (Statement | Declaration)[] = [];
     while (scanner.peek().kind !== "cbrace") {
-        statements.push(parseStatement(scanner));
+        const item = isSpecifier(scanner)
+            ? parseDeclaration(scanner)
+            : parseStatement(scanner);
+        statements.push(item);
     }
     expectOrFail("cbrace", scanner);
     return CompoundStatement(statements);
@@ -565,6 +570,20 @@ export function parseVariableDeclaration(
             Identifier(variable_name.value)
         );
     }
+}
+
+function isSpecifier(scanner: Scanner): boolean {
+    const next = scanner.peek();
+    // TODO: This needs to check all possibile specifiers when
+    // we don't just support int
+    return next.kind === "identifier" && next.value === "int";
+}
+
+export function parseDeclaration(scanner: Scanner): Declaration {
+    if (!isSpecifier(scanner)) {
+        throw new Error(`Expected specifier but got ${scanner.peek()}`);
+    }
+    return parseVariableDeclaration(scanner);
 }
 
 export function parseIfStatement(scanner: Scanner): IfStatement {
@@ -612,12 +631,9 @@ export function parseForStatement(scanner: Scanner): ForStatement {
     if (scanner.peek().kind === "semicolon") {
         expectOrFail("semicolon", scanner);
     } else {
-        // TODO: Don't assume this is an int
-        initial =
-            scanner.peek().kind === "identifier" &&
-            scanner.peek().value === "int"
-                ? parseVariableDeclaration(scanner)
-                : parseExpressionStatement(scanner).expression;
+        initial = isSpecifier(scanner)
+            ? parseDeclaration(scanner)
+            : parseExpressionStatement(scanner).expression;
     }
 
     let condition = undefined;
@@ -633,7 +649,10 @@ export function parseForStatement(scanner: Scanner): ForStatement {
     }
     expectOrFail("cparen", scanner);
 
-    const body = parseStatement(scanner);
+    const body =
+        scanner.peek().kind === "obrace"
+            ? parseCompoundStatement(scanner)
+            : CompoundStatement([parseStatement(scanner)]);
 
     return ForStatement(initial, condition, post, body);
 }
@@ -643,7 +662,7 @@ export function parseWhileStatement(scanner: Scanner): WhileStatement {
     expectOrFail("oparen", scanner);
     const condition = parseExpression(scanner);
     expectOrFail("cparen", scanner);
-    const body = parseStatement(scanner);
+    const body = parseCompoundStatement(scanner);
     return WhileStatement(condition, body);
 }
 
@@ -661,15 +680,13 @@ export function parseEmptyStatement(scanner: Scanner): NullStatement {
     return NullStatement();
 }
 
-export function parseStatement(scanner: Scanner): Statement {
+export function parseStatement(scanner: Scanner): Statement | Declaration {
     // TODO: Refactor to return ParseResult
     const next = scanner.peek();
     if (next.kind === "obrace") {
         return parseCompoundStatement(scanner);
     } else if (next.kind === "return") {
         return parseReturn(scanner);
-    } else if (next.kind === "identifier" && next.value === "int") {
-        return parseVariableDeclaration(scanner);
     } else if (next.kind === "if") {
         return parseIfStatement(scanner);
     } else if (next.kind === "for") {
