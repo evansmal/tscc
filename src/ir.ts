@@ -437,6 +437,60 @@ function lowerDeclaration(statement: Parser.Declaration, scope: Scope) {
     return instructions;
 }
 
+function lowerForStatement(
+    statement: Parser.ForStatement,
+    scope: Scope
+): Instruction[] {
+    const instructions: Instruction[] = [];
+    const begin_label = scope.createLabel("for_begin");
+    const end_label = scope.createLabel("for_end");
+    if (statement.initial) {
+        if (statement.initial.kind === "VariableDeclaration") {
+            const initial = lowerDeclaration(statement.initial, scope);
+            instructions.push(...initial);
+        } else {
+            lowerExpression(statement.initial, instructions, scope);
+        }
+    }
+    instructions.push(begin_label);
+    if (statement.condition) {
+        const condition = lowerExpression(
+            statement.condition,
+            instructions,
+            scope
+        );
+        instructions.push(JumpIfZero(condition, end_label.identifier));
+    }
+
+    instructions.push(...lowerStatement(statement.body, scope));
+    if (statement.post) {
+        lowerExpression(statement.post, instructions, scope);
+    }
+    instructions.push(Jump(begin_label.identifier), end_label);
+    return instructions;
+}
+
+function lowerWhileStatement(
+    statement: Parser.WhileStatement,
+    scope: Scope
+): Instruction[] {
+    const instructions: Instruction[] = [];
+
+    const begin_label = scope.createLabel("while_begin");
+    instructions.push(begin_label);
+
+    const condition = lowerExpression(statement.condition, instructions, scope);
+    const end_label = scope.createLabel("while_end");
+    instructions.push(JumpIfZero(condition, end_label.identifier));
+
+    instructions.push(
+        ...lowerStatement(statement.body, scope),
+        Jump(begin_label.identifier),
+        end_label
+    );
+    return instructions;
+}
+
 function lowerStatement(
     statement: Parser.Statement,
     scope: Scope
@@ -466,31 +520,9 @@ function lowerStatement(
     } else if (statement.kind === "ExpressionStatement") {
         lowerExpression(statement.expression, instructions, scope);
     } else if (statement.kind === "ForStatement") {
-        const begin_label = scope.createLabel("for_begin");
-        const end_label = scope.createLabel("for_end");
-        if (statement.initial) {
-            if (statement.initial.kind === "VariableDeclaration") {
-                const initial = lowerDeclaration(statement.initial, scope);
-                instructions.push(...initial);
-            } else {
-                lowerExpression(statement.initial, instructions, scope);
-            }
-        }
-        instructions.push(begin_label);
-        if (statement.condition) {
-            const condition = lowerExpression(
-                statement.condition,
-                instructions,
-                scope
-            );
-            instructions.push(JumpIfZero(condition, end_label.identifier));
-        }
-
-        instructions.push(...lowerStatement(statement.body, scope));
-        if (statement.post) {
-            lowerExpression(statement.post, instructions, scope);
-        }
-        instructions.push(Jump(begin_label.identifier), end_label);
+        instructions.push(...lowerForStatement(statement, scope));
+    } else if (statement.kind === "WhileStatement") {
+        instructions.push(...lowerWhileStatement(statement, scope));
     } else {
         throw new Error(
             `Could not lower AST statement into IR instruction: ${inspect(
