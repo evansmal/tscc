@@ -468,22 +468,29 @@ function lowerStatement(
     } else if (statement.kind === "ForStatement") {
         const begin_label = scope.createLabel("for_begin");
         const end_label = scope.createLabel("for_end");
-
-        // TODO: Check these are expression statements properly
-        const initial = lowerExpression(
-            <Parser.Expression>statement.initial,
-            instructions,
-            scope
-        );
-
+        if (statement.initial) {
+            if (statement.initial.kind === "VariableDeclaration") {
+                const initial = lowerDeclaration(statement.initial, scope);
+                instructions.push(...initial);
+            } else {
+                lowerExpression(statement.initial, instructions, scope);
+            }
+        }
         instructions.push(begin_label);
-        const condition = lowerExpression(
-            <Parser.Expression>statement.condition,
-            instructions,
-            scope
-        );
-        instructions.push(JumpIfZero(condition, end_label.identifier));
-        instructions.push(end_label);
+        if (statement.condition) {
+            const condition = lowerExpression(
+                statement.condition,
+                instructions,
+                scope
+            );
+            instructions.push(JumpIfZero(condition, end_label.identifier));
+        }
+
+        instructions.push(...lowerStatement(statement.body, scope));
+        if (statement.post) {
+            lowerExpression(statement.post, instructions, scope);
+        }
+        instructions.push(Jump(begin_label.identifier), end_label);
     } else {
         throw new Error(
             `Could not lower AST statement into IR instruction: ${inspect(
