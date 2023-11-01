@@ -89,7 +89,7 @@ function readToken(input: string, position: number): Result<Token, string> {
         ["plus", /^\+/],
         ["asterisk", /^\*/],
         ["forward_slash", /^\//],
-        ["percent", /^\//],
+        ["percent", /^\%/],
         ["comment", /^\/\/.*/],
         ["comma", /^\,/],
         ["assignment", /^\=/]
