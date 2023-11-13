@@ -27,6 +27,17 @@ Run the compiler:
 ./tscc main.c
 ```
 
+Currently, there is support for some subset of C99. The goal is to eventually be able to compile some set of non-trivial real-world applications out there (`libpng`, `git`). 
+
+To get a complete list of all of the language features currently supported, check the integration tests. To name a few:
+
+- Unary and binary operators
+- Logical and relational operators
+- Local variables
+- If statements and conditional expressions
+- Compound statements
+- Loops (`for`, `while`)
+
 ## Unit Testing
 
 Run the unit tests:
@@ -40,6 +51,8 @@ Run the end-to-end test suite:
 ```sh
 yarn test:feature
 ```
+
+Adding a new test is as simple as adding a new `.c` file to `test/features`. The test suite will compile and run the test with `tscc` and `gcc` and compare the results.
 
 ## References
 
