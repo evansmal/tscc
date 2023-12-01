@@ -38,6 +38,8 @@ To get a complete list of all of the language features currently supported, chec
 - Compound statements
 - Loops (`for`, `while`)
 
+The project is structured as a sequence of passes from the input format (C source code) to the binary output. The final assembling and linking is currently done using `gcc`.
+
 ## Unit Testing
 
 Run the unit tests:
