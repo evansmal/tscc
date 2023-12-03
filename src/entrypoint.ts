@@ -6,6 +6,7 @@ import * as Parser from "./parser.js";
 import * as Evaluator from "./evaluator.js";
 import * as IR from "./ir.js";
 import * as Generator from "./generator.js";
+import * as SemanticAnalyzer from "./semantics.js";
 
 const PARSE_ERR_CODE = 0x02;
 
@@ -23,6 +24,7 @@ export interface CompilerOptions {
     show_input: boolean;
     show_lexer: boolean;
     show_ast: boolean;
+    analyze_ast: boolean;
     evaluate_ast: boolean;
     show_ir: boolean;
     show_asm: boolean;
@@ -44,6 +46,8 @@ export function tscc(opts: CompilerOptions) {
             }
         );
         if (opts.show_ast) console.log(Parser.toString(ast));
+
+        if (opts.analyze_ast) SemanticAnalyzer.analyzeProgram(ast);
 
         if (opts.evaluate_ast) process.exit(Evaluator.walk(ast));
 
