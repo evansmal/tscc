@@ -34,6 +34,10 @@ export function createCompilerOptionsFromArgs(argv: string[]): CompilerOptions {
                 type: "boolean",
                 default: false
             },
+            sema: {
+                type: "boolean",
+                default: false
+            },
             eval: {
                 type: "boolean",
                 default: false
@@ -71,6 +75,7 @@ export function createCompilerOptionsFromArgs(argv: string[]): CompilerOptions {
         show_input: getBoolean(values, "input"),
         show_lexer: getBoolean(values, "lex"),
         show_ast: getBoolean(values, "ast"),
+        analyze_ast: getBoolean(values, "sema"),
         evaluate_ast: getBoolean(values, "eval"),
         show_ir: getBoolean(values, "ir"),
         show_asm: getBoolean(values, "asm"),
