@@ -674,6 +674,7 @@ function emitRegister(register: Register): string {
     else if (register.name === "sp") return `%rsp`;
     else if (register.name === "di") return `%edi`;
     else if (register.name === "dx") return `%edx`;
+    else if (register.name === "si") return `%esi`;
     else throw new Error(`Cannot emit register ${inspect(register)}`);
 }
 
