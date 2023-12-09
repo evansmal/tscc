@@ -112,3 +112,14 @@ parserTest(`Parse function call`, `hello(1, 2, 3)`, (scanner) => {
         ])
     );
 });
+
+parserTest(`Parse function call`, `x(y, 1, 2, 3)`, (scanner) => {
+    const call = parseExpression(scanner);
+    const actual = FunctionCall(Identifier("x"), [
+        VariableReference(Identifier("y")),
+        Constant(1),
+        Constant(2),
+        Constant(3)
+    ]);
+    matchNode(call, actual);
+});
