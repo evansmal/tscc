@@ -35,7 +35,17 @@ function Imm(value: number): Imm {
     return { kind: "Imm", value };
 }
 
-type RegisterName = "ax" | "dx" | "r10" | "r11" | "sp" | "di";
+type RegisterName =
+    | "ax"
+    | "cx"
+    | "dx"
+    | "r8"
+    | "r9"
+    | "r10"
+    | "r11"
+    | "si"
+    | "di"
+    | "sp";
 
 interface Register {
     kind: "Register";
@@ -398,21 +408,19 @@ function lowerLabel(instruction: IR.Label): InstructionX86[] {
 }
 
 function lowerFunctionCall(instruction: IR.FunctionCall): InstructionX86[] {
-    // Reverse arguments because cdecl calling convension requires it:
-    //    mov $3, %edi
-    //    mov $2, %esi
-    //    mov $1, %edx
-    //    call _foo
-    const args = [...instruction.args].reverse();
-
-    // TODO: support more than a single argument
-    if (args.length !== 1)
+    if (instruction.args.length > 6)
         throw new Error(
             "Cannot handle more than a single argument when calling functions"
         );
-
+    const registers: RegisterName[] = ["di", "si", "dx", "cx", "r8", "r9"];
+    const setup: InstructionX86[] = [];
+    for (let i = 0; i < Math.min(instruction.args.length, 6); i++) {
+        setup.push(
+            Mov(lowerValue(instruction.args[i]), Register(registers[i]))
+        );
+    }
     return [
-        Mov(lowerValue(args[0]), Register("di")),
+        ...setup,
         Call(instruction.name),
         Mov(Register("ax"), lowerValue(instruction.dst))
     ];
@@ -445,14 +453,28 @@ function lowerInstruction(instruction: IR.Instruction): InstructionX86[] {
 }
 
 function lowerFunction(func: IR.Function): Function {
-    const fn = Function(func.name, func.body.flatMap(lowerInstruction));
-    const total_offset = replacePseudoRegister(fn);
-    insertStackAllocation(fn, total_offset);
-    fixInvalidMovInstructions(fn);
-    fixInvalidCompareInstructions(fn);
-    fixInvalidBinaryInstructions(fn);
-    fixInvalidIDivInstructions(fn);
-    return fn;
+    const setup_params: InstructionX86[] = [];
+    const registers: RegisterName[] = ["di", "si", "dx", "cx", "r8", "r9"];
+    for (let i = 0; i < Math.min(func.parameters.length, 6); i++) {
+        setup_params.push(
+            Mov(Register(registers[i]), PseudoRegister(func.parameters[i]))
+        );
+    }
+    if (func.parameters.length > 6)
+        throw new Error(
+            "Functions with more than 6 parameters are not support"
+        );
+
+    const body = func.body.flatMap(lowerInstruction);
+
+    const f = Function(func.name, [...setup_params, ...body]);
+    const total_offset = replacePseudoRegister(f);
+    insertStackAllocation(f, total_offset);
+    fixInvalidMovInstructions(f);
+    fixInvalidCompareInstructions(f);
+    fixInvalidBinaryInstructions(f);
+    fixInvalidIDivInstructions(f);
+    return f;
 }
 
 function replacePseudoRegister(func: Function): number {
@@ -641,35 +663,8 @@ function unaryInstructionToString(instruction: UnaryInstruction) {
     return output;
 }
 
-function instructionToString(instruction: InstructionX86): string {
-    let output = "";
-    if (instruction.kind === "Mov")
-        output += `MOV ${operandToString(instruction.src)}, ${operandToString(
-            instruction.dst
-        )}`;
-    else if (instruction.kind === "Compare")
-        output += `CMP ${operandToString(instruction.src)}, ${operandToString(
-            instruction.dst
-        )}`;
-    else if (instruction.kind === "UnaryInstruction") {
-        output += unaryInstructionToString(instruction);
-    } else if (instruction.kind === "BinaryInstruction") {
-        output += binaryInstructionToString(instruction);
-    } else if (instruction.kind === "AllocateStack") {
-        output += `AC ${instruction.size}`;
-    } else if (instruction.kind === "Ret") {
-        output += `RET`;
-    } else {
-        output += instruction.kind.toUpperCase();
-    }
-    return output;
-}
-
 export function toString(program: Program): string {
-    return program.function_definition
-        .flatMap((fn) => fn.instructions)
-        .map(instructionToString)
-        .join("\n");
+    return inspect(program, { depth: 99, colors: true });
 }
 
 function emitRegister(register: Register): string {
@@ -795,7 +790,8 @@ ${func.name.value}:
 \tmovq %rsp, %rbp
 \t${func.instructions.map(emitInstruction).join("\n\t")}
 \t${emitInstruction(Mov(Imm(0), Register("ax")))}
-\t${emitRet()}`;
+\t${emitRet()}
+`;
 }
 
 export function emit(program: Program): string {

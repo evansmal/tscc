@@ -26,7 +26,16 @@ export function Identifier(name: string): Identifier {
 export interface Function {
     kind: "Function";
     name: Identifier;
+    parameters: Identifier[];
     body: Instruction[];
+}
+
+export function Function(
+    name: Identifier,
+    parameters: Identifier[],
+    body: Instruction[]
+): Function {
+    return { kind: "Function", name, parameters, body };
 }
 
 export interface Return {
@@ -317,7 +326,19 @@ function lowerBinaryExpression(
     }
 }
 
-function lowerFunctionCall(call: Parser.FunctionCall) {}
+function lowerFunctionCall(
+    call: Parser.FunctionCall,
+    scope: Scope
+): [Instruction[], Value] {
+    const args: Value[] = [];
+    const instructions: Instruction[] = [];
+    for (const arg of call.args) {
+        args.push(lowerExpression(arg, instructions, scope));
+    }
+    const result = scope.createVariable();
+    const function_call = FunctionCall(call.name, args, result);
+    return [[...instructions, function_call], result];
+}
 
 function lowerExpression(
     expression: Parser.Expression,
@@ -345,7 +366,8 @@ function lowerExpression(
                 `Variable '${expression.identifier.value}' does not exist`
             );
         }
-        return scope.getVariable(expression.identifier).unwrap();
+        const v = scope.getVariable(expression.identifier).unwrap();
+        return v;
     } else if (expression.kind === "VariableAssignment") {
         const variable = scope.getVariable(expression.dst.identifier);
         if (variable.isErr()) throw new Error(variable.unwrapErr());
@@ -386,12 +408,8 @@ function lowerExpression(
         instructions.push(Copy(false_value, result), true_label);
         return result;
     } else if (expression.kind === "FunctionCall") {
-        const args: Value[] = [];
-        const result = scope.createVariable();
-        for (const arg of expression.args) {
-            args.push(lowerExpression(arg, instructions, scope));
-        }
-        instructions.push(FunctionCall(expression.name, args, result));
+        const [inst, result] = lowerFunctionCall(expression, scope);
+        instructions.push(...inst);
         return result;
     } else {
         throw new Error(
@@ -536,20 +554,22 @@ function lowerStatement(
 
 function lowerFunctionDefinition(func: Parser.FunctionDefinition): Function {
     const scope = createScope();
+    const parameters: Identifier[] = [];
     func.parameters.forEach((p) => {
-        scope.createVariable(p.name);
+        const variable = scope.createVariable(p.name);
+        parameters.push(variable.identifier);
     });
-    return {
-        kind: "Function",
-        name: func.name,
-        body: func.body.body.flatMap((statement) => {
+    return Function(
+        func.name,
+        parameters,
+        func.body.body.flatMap((statement) => {
             if (statement.kind === "VariableDeclaration") {
                 return lowerDeclaration(statement, scope);
             } else {
                 return lowerStatement(statement, scope);
             }
         })
-    };
+    );
 }
 
 export function toString(program: Program): string {
