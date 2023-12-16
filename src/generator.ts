@@ -89,6 +89,15 @@ function Mov(src: Operand, dst: Operand): Mov {
     return { kind: "Mov", src, dst };
 }
 
+interface Push {
+    kind: "Push";
+    operand: Operand;
+}
+
+function Push(operand: Operand): Push {
+    return { kind: "Push", operand };
+}
+
 interface Compare {
     kind: "Compare";
     src: Operand;
@@ -175,6 +184,15 @@ function AllocateStack(size: number): AllocateStack {
     return { kind: "AllocateStack", size };
 }
 
+interface DeallocateStack {
+    kind: "DeallocateStack";
+    size: number;
+}
+
+function DeallocateStack(size: number): DeallocateStack {
+    return { kind: "DeallocateStack", size };
+}
+
 interface CDQ {
     kind: "CDQ";
 }
@@ -241,11 +259,13 @@ function Call(name: Identifier): Call {
 
 type InstructionX86 =
     | Mov
+    | Push
     | Compare
     | SetConditionCode
     | UnaryInstruction
     | BinaryInstruction
     | AllocateStack
+    | DeallocateStack
     | Ret
     | CDQ
     | IDiv
@@ -408,22 +428,37 @@ function lowerLabel(instruction: IR.Label): InstructionX86[] {
 }
 
 function lowerFunctionCall(instruction: IR.FunctionCall): InstructionX86[] {
-    if (instruction.args.length > 6)
-        throw new Error(
-            "Cannot handle more than a single argument when calling functions"
-        );
-    const registers: RegisterName[] = ["di", "si", "dx", "cx", "r8", "r9"];
     const setup: InstructionX86[] = [];
-    for (let i = 0; i < Math.min(instruction.args.length, 6); i++) {
-        setup.push(
-            Mov(lowerValue(instruction.args[i]), Register(registers[i]))
-        );
+
+    // First 6 parameters go into specific registers
+    // All other parameters go on the stack in reverse order
+    const register_args = instruction.args;
+    const stack_args = register_args.splice(6).reverse();
+
+    // If we have an odd number of stack arguments we should pad
+    const padding = stack_args.length % 2 !== 0 ? 8 : 0;
+    if (padding !== 0) setup.push(AllocateStack(padding));
+
+    const registers: RegisterName[] = ["di", "si", "dx", "cx", "r8", "r9"];
+    for (let i = 0; i < register_args.length; i++) {
+        setup.push(Mov(lowerValue(register_args[i]), Register(registers[i])));
     }
-    return [
-        ...setup,
-        Call(instruction.name),
-        Mov(Register("ax"), lowerValue(instruction.dst))
-    ];
+    for (let i = 0; i < stack_args.length; i++) {
+        const value = lowerValue(stack_args[i]);
+        if (value.kind === "Imm" || value.kind === "Register") {
+            setup.push(Push(value));
+        } else {
+            setup.push(Mov(value, Register("ax")), Push(Register("ax")));
+        }
+    }
+
+    const instructions = [...setup, Call(instruction.name)];
+    const bytes_to_remove = 8 * stack_args.length + padding;
+    if (bytes_to_remove !== 0) {
+        instructions.push(DeallocateStack(bytes_to_remove));
+    }
+    instructions.push(Mov(Register("ax"), lowerValue(instruction.dst)));
+    return instructions;
 }
 
 function lowerInstruction(instruction: IR.Instruction): InstructionX86[] {
@@ -460,10 +495,10 @@ function lowerFunction(func: IR.Function): Function {
             Mov(Register(registers[i]), PseudoRegister(func.parameters[i]))
         );
     }
-    if (func.parameters.length > 6)
-        throw new Error(
-            "Functions with more than 6 parameters are not support"
-        );
+    for (let i = 6; i < func.parameters.length; i++) {
+        const src = Stack(16 + 8 * (i - 6));
+        setup_params.push(Mov(src, PseudoRegister(func.parameters[i])));
+    }
 
     const body = func.body.flatMap(lowerInstruction);
 
@@ -521,8 +556,10 @@ function replacePseudoRegister(func: Function): number {
         } else if (inst.kind === "SetCC") {
             return SetCC(inst.condition, replace(inst.operand));
         } else if (
+            inst.kind === "Push" ||
             inst.kind === "Ret" ||
             inst.kind === "AllocateStack" ||
+            inst.kind === "DeallocateStack" ||
             inst.kind === "CDQ" ||
             inst.kind === "Label" ||
             inst.kind === "Jmp" ||
@@ -663,6 +700,10 @@ function emitRet(): string {
     return res;
 }
 
+function emitPush(instruction: Push): string {
+    return `pushq ${emitOperand(instruction.operand)}`;
+}
+
 function emitCompare(instruction: Compare): string {
     return `cmpl ${emitOperand(instruction.src)}, ${emitOperand(
         instruction.dst
@@ -701,6 +742,10 @@ function emitAllocateStack(alloc: AllocateStack): string {
     return `subq $${alloc.size}, %rsp`;
 }
 
+function emitDeallocateStack(dealloc: DeallocateStack): string {
+    return `addq $${dealloc.size}, %rsp`;
+}
+
 function emitIDivInstruction(idiv: IDiv): string {
     return `idivl ${emitOperand(idiv.operand)}`;
 }
@@ -734,12 +779,15 @@ function emitInstruction(instruction: InstructionX86): string {
         return `movl ${emitOperand(instruction.src)}, ${emitOperand(
             instruction.dst
         )}`;
+    else if (instruction.kind === "Push") return emitPush(instruction);
     else if (instruction.kind === "Ret") return emitRet();
     else if (instruction.kind === "Compare") return emitCompare(instruction);
     else if (instruction.kind === "SetConditionCode")
         return emitSetConditionCode(instruction);
     else if (instruction.kind === "AllocateStack")
         return emitAllocateStack(instruction);
+    else if (instruction.kind === "DeallocateStack")
+        return emitDeallocateStack(instruction);
     else if (instruction.kind === "UnaryInstruction")
         return emitUnaryInstruction(instruction);
     else if (instruction.kind === "BinaryInstruction")
