@@ -631,42 +631,6 @@ export function generate(ir: IR.Program): Program {
     return program;
 }
 
-function operandToString(operand: Operand): string {
-    if (operand.kind === "Imm") return `${operand.value}`;
-    else if (operand.kind === "Register") return operand.name;
-    else if (operand.kind === "PseudoRegister")
-        return `${operand.identifier.value}`;
-    else if (operand.kind === "Stack") return `stack[${operand.address}]`;
-    else throw new Error("Cannot convert operand to string");
-}
-
-function binaryOperatorToString(operator: BinaryOperator): string {
-    if (operator.operand === "Add") return "ADD";
-    else if (operator.operand === "Multiply") return "MUL";
-    else if (operator.operand === "Subtract") return "SUB";
-    else throw new Error("Cannot lower binary operator to string");
-}
-
-function binaryInstructionToString(instruction: BinaryInstruction) {
-    let output = `${binaryOperatorToString(instruction.operator)}`;
-    output += ` ${operandToString(instruction.src)}, ${operandToString(
-        instruction.dst
-    )}`;
-    return output;
-}
-
-function unaryInstructionToString(instruction: UnaryInstruction) {
-    let output = "";
-    if (instruction.operator.operator_type === "Negate") {
-        output += `NEG ${operandToString(instruction.operand)}`;
-    } else if (instruction.operator.operator_type === "Not") {
-        output += `NOT ${operandToString(instruction.operand)}`;
-    } else {
-        throw new Error("Cannot lower operand type to string");
-    }
-    return output;
-}
-
 export function toString(program: Program): string {
     return inspect(program, { depth: 99, colors: true });
 }
