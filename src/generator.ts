@@ -791,17 +791,28 @@ function emitInstruction(instruction: InstructionX86): string {
     else throw new Error(`Cannot emit instruction: ${inspect(instruction)}`);
 }
 
-function emitFunction(func: Function): string {
+function emitFunctionBody(func: Function): string {
     return `\t.globl ${func.name.value}
 ${func.name.value}:
 \tpushq %rbp
 \tmovq %rsp, %rbp
-\t${func.instructions.map(emitInstruction).join("\n\t")}
-\t${emitInstruction(Mov(Imm(0), Register("ax")))}
-\t${emitRet()}
-`;
+\t${func.instructions.map(emitInstruction).join("\n\t")}`;
+}
+
+function emitFunction(func: Function): string {
+    const should_add_return =
+        func.name.value === "main" &&
+        func.instructions[func.instructions.length - 1].kind !== "Ret";
+    if (should_add_return) {
+        return (
+            emitFunctionBody(func) +
+            `\n\t${emitInstruction(
+                Mov(Imm(0), Register("ax"))
+            )}\n\t${emitRet()}`
+        );
+    } else return emitFunctionBody(func);
 }
 
 export function emit(program: Program): string {
-    return program.function_definition.map(emitFunction).join("\n");
+    return program.function_definition.map(emitFunction).join("\n\n");
 }
