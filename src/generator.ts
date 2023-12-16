@@ -668,13 +668,16 @@ export function toString(program: Program): string {
 }
 
 function emitRegister(register: Register): string {
-    if (register.name === "r10") return `%r10d`;
-    else if (register.name === "ax") return `%eax`;
-    else if (register.name === "r11") return `%r11d`;
+    if (register.name === "ax") return `%eax`;
+    else if (register.name === "cx") return `%ecx`;
+    else if (register.name === "dx") return `%edx`;
     else if (register.name === "sp") return `%rsp`;
     else if (register.name === "di") return `%edi`;
-    else if (register.name === "dx") return `%edx`;
     else if (register.name === "si") return `%esi`;
+    else if (register.name === "r8") return `%r8d`;
+    else if (register.name === "r9") return `%r9d`;
+    else if (register.name === "r10") return `%r10d`;
+    else if (register.name === "r11") return `%r11d`;
     else throw new Error(`Cannot emit register ${inspect(register)}`);
 }
 
