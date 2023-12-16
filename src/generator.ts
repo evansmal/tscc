@@ -469,7 +469,11 @@ function lowerFunction(func: IR.Function): Function {
 
     const f = Function(func.name, [...setup_params, ...body]);
     const total_offset = replacePseudoRegister(f);
-    insertStackAllocation(f, total_offset);
+
+    // This needs to be positive, but offset grows downwards
+    const stack_size = total_offset * -1;
+    insertStackAllocation(f, stack_size);
+
     fixInvalidMovInstructions(f);
     fixInvalidCompareInstructions(f);
     fixInvalidBinaryInstructions(f);
